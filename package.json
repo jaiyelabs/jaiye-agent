@@ -16,7 +16,7 @@
     "prepublishOnly": "npm run build"
   },
   "keywords": ["ai", "agents", "cli", "coordination", "multi-agent"],
-  "author": "Rebecca Akinlaja",
+  "author": "Jaiye Labs",
   "license": "MIT",
   "engines": { "node": ">=18" },
   "dependencies": {
