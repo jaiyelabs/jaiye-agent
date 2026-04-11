@@ -5,7 +5,7 @@
 <h1 align="center">jaiye-agent</h1>
 
 <p align="center">
-  Multi-agent coordination for AI coding tools.<br/>
+  The coordination layer for multi-agent coding workflows.<br/>
   File ownership. Structured handoffs. Conflict detection.
 </p>
 
@@ -18,11 +18,17 @@
 
 ---
 
-Most developers using AI coding agents run into the same problem: multiple agents editing the same files, no coordination, no handoffs, no ownership.
+## The Problem
 
-`jaiye-agent` fixes this. It adds a lightweight coordination layer to any repo — track which agent owns which files, create structured handoffs between agents and catch conflicts before they hit production.
+Most teams are **agent-rich but strategy-poor.** They have Claude Code, Codex, Gemini CLI, Cursor and Copilot — but no coordination between them. The result: agents editing the same files, undoing each other's work and burning tokens re-learning context that was already discovered.
 
-Works with any AI coding agent. Claude Code, Codex, Gemini CLI, Cursor, Copilot — doesn't matter. The protocol is agent-agnostic.
+**37% of multi-agent failures** come from integration errors — agents working in isolation that produce correct code individually but break at the seam.
+
+## The Fix
+
+`jaiye-agent` adds a shared memory bus to your repo. It tracks which agent owns which files, creates structured handoffs when work passes between agents and catches conflicts before they hit production.
+
+It's not a platform. It's not a dashboard. It lives inside your repo — invisible orchestration that works with the tools you already use.
 
 ---
 
@@ -34,8 +40,10 @@ npx jaiye-agent init
 
 This creates:
 - `.jaiye/config.yaml` — agent definitions and file ownership rules
-- `AGENTS.md` — protocol reference for all agents to read
+- `AGENTS.md` — the shared state file all agents read before starting work
 - `.jaiye/handoffs/` — local handoff log directory
+
+---
 
 ## Commands
 
@@ -49,7 +57,7 @@ jaiye-agent init
 
 ### `jaiye-agent status`
 
-See which agent owns which files and spot conflicts.
+See which agent owns which files and spot conflicts instantly.
 
 ```
 jaiye-agent status
@@ -89,11 +97,21 @@ CI mode. Exits with code 1 if multiple agents touched the same file in a PR.
 jaiye-agent check --base main
 ```
 
+---
+
 ## How It Works
 
-### Agent identification
+### Role specialization
 
-Agents are identified by commit message prefixes. Configure them in `.jaiye/config.yaml`:
+Each agent has a defined role. You're not asking them to do the same thing — you're letting each one play to its strengths.
+
+| Agent | Role | Commit Prefix |
+|-------|------|---------------|
+| Claude Code | Architecture, complex features, refactoring | `[claude]` |
+| Codex | Integration, debugging, validation | `[codex]` |
+| Gemini CLI | Routine tasks, documentation, research | `[gemini]` |
+
+Configure agents in `.jaiye/config.yaml`:
 
 ```yaml
 agents:
@@ -108,16 +126,9 @@ agents:
     commit_prefix: "[gemini]"
 ```
 
-Then commit with the prefix:
-
-```bash
-git commit -m "[claude] add auth flow"
-git commit -m "[codex] add auth tests"
-```
-
 ### File ownership
 
-Define which agent owns which files:
+Define which agent owns which files. When an agent crosses a boundary, `status` flags it.
 
 ```yaml
 ownership:
@@ -129,17 +140,21 @@ ownership:
     agent: gemini
 ```
 
-When an agent touches a file it doesn't own, `status` flags it as a conflict.
+### The handoff protocol
 
-### Handoffs
+Before passing work to another agent:
 
-Before passing work to another agent, create a handoff:
+1. Commit and push all changes
+2. Run `jaiye-agent handoff --from <you> --to <next-agent>`
+3. The receiving agent reads the handoff before starting
 
-```bash
-jaiye-agent handoff --from claude --to codex --summary "feature done, need tests"
-```
+The handoff includes git context, files touched, current status, assumptions and an exact ask — zero loss of momentum between agents.
 
-This generates a structured markdown file with git context, files touched and status — so the receiving agent knows exactly what happened.
+### Context preservation
+
+`AGENTS.md` acts as a save point for the whole team. If an agent discovers something non-obvious — a gotcha, a constraint, a decision — it goes in the file so the next agent doesn't re-learn it.
+
+---
 
 ## CI Integration
 
@@ -166,6 +181,8 @@ Or run directly:
 npx jaiye-agent check --base main
 ```
 
+---
+
 ## Configuration
 
 Full `.jaiye/config.yaml` reference:
@@ -188,11 +205,19 @@ settings:
   base_branch: "main"
 ```
 
-## Why
+---
 
-- **80% of developers use AI coding agents** but most have no coordination between them
-- **37% of multi-agent failures** come from integration errors — agents editing the same files without knowing
-- The fix isn't fewer agents. It's **clear ownership and structured handoffs**
+## Why This Works
+
+**Role specialization** — you're not asking agents to do the same thing. Each one plays to its training strengths.
+
+**Context preservation** — `AGENTS.md` keeps discoveries in the active attention window instead of losing them 20 messages ago.
+
+**Frictionless handoffs** — the "Mode" field tells the receiving agent exactly how much to touch. "Integrate" is different from "Draft."
+
+**Agent-agnostic** — works with Claude Code, Codex, Gemini CLI, Cursor, Copilot or any combination. The protocol is the product, not the agents.
+
+---
 
 ## License
 
