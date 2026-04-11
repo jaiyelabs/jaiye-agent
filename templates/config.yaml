@@ -1,0 +1,25 @@
+version: 1
+
+agents:
+  - name: claude
+    description: "Primary architect — complex features, refactoring"
+    commit_prefix: "[claude]"
+  - name: codex
+    description: "Integration, debugging, validation"
+    commit_prefix: "[codex]"
+  - name: gemini
+    description: "Routine tasks, documentation, research"
+    commit_prefix: "[gemini]"
+
+ownership:
+  - pattern: "src/**"
+    agent: claude
+  - pattern: "tests/**"
+    agent: codex
+  - pattern: "docs/**"
+    agent: gemini
+
+settings:
+  handoff_dir: ".jaiye/handoffs"
+  conflict_mode: "warn"
+  base_branch: "main"
