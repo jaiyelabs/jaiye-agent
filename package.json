@@ -1,12 +1,16 @@
 {
   "name": "jaiye-agent",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Multi-agent coordination protocol for AI coding tools",
   "type": "module",
   "bin": {
     "jaiye-agent": "./dist/index.js"
   },
-  "files": ["dist", "templates", "action.yml"],
+  "files": [
+    "dist",
+    "templates",
+    "action.yml"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -15,10 +19,18 @@
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["ai", "agents", "cli", "coordination", "multi-agent"],
+  "keywords": [
+    "ai",
+    "agents",
+    "cli",
+    "coordination",
+    "multi-agent"
+  ],
   "author": "Jaiye Labs",
   "license": "MIT",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "chalk": "^5.3.0",
     "cli-table3": "^0.6.5",
