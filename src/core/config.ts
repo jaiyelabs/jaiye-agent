@@ -26,12 +26,20 @@ export function loadConfig(): JaiyeConfig {
   }
 
   // defaults
+  const settings = (config.settings || {}) as Partial<JaiyeConfig['settings']>
   config.settings = {
     handoff_dir: '.jaiye/handoffs',
     conflict_mode: 'warn',
     base_branch: 'main',
-    ...config.settings
+    bridge_dir: '.jaiye/bridges',
+    ...settings
   }
+
+  config.agents = config.agents.map(agent => ({
+    type: 'cli',
+    capabilities: ['code_gen', 'file_io', 'git'],
+    ...agent
+  }))
 
   return config
 }

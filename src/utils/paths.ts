@@ -1,16 +1,12 @@
-import { execSync } from 'child_process'
 import path from 'path'
+import { getProjectRoot } from '../core/mode.js'
 
 export function getRepoRoot(): string {
-  try {
-    return execSync('git rev-parse --show-toplevel', { encoding: 'utf-8' }).trim()
-  } catch {
-    throw new Error('Not a git repository. Run this command inside a git repo.')
-  }
+  return getProjectRoot()
 }
 
 export function getJaiyeDir(): string {
-  return path.join(getRepoRoot(), '.jaiye')
+  return path.join(getProjectRoot(), '.jaiye')
 }
 
 export function getConfigPath(): string {
@@ -22,5 +18,13 @@ export function getHandoffDir(): string {
 }
 
 export function getAgentsMdPath(): string {
-  return path.join(getRepoRoot(), 'AGENTS.md')
+  return path.join(getProjectRoot(), 'AGENTS.md')
+}
+
+export function getStatePath(): string {
+  return path.join(getJaiyeDir(), 'state.json')
+}
+
+export function getBridgeDir(): string {
+  return path.join(getJaiyeDir(), 'bridges')
 }

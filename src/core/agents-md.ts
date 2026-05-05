@@ -2,7 +2,7 @@ import type { JaiyeConfig } from '../types.js'
 
 export function generateAgentsMd(config: JaiyeConfig): string {
   const agentRows = config.agents
-    .map(a => `| ${a.name} | ${a.description} | \`${a.commit_prefix}\` |`)
+    .map(a => `| ${a.name} | ${a.type || 'cli'} | ${a.description} | ${a.capabilities?.join(', ') || ''} | ${a.commit_prefix ? `\`${a.commit_prefix}\`` : 'n/a'} |`)
     .join('\n')
 
   return `# AGENTS.md — Multi-Agent Coordination
@@ -12,8 +12,8 @@ All agents should read this file before starting work.
 
 ## Active Agents
 
-| Agent | Role | Commit Prefix |
-|-------|------|---------------|
+| Agent | Type | Role | Capabilities | Commit Prefix |
+|-------|------|------|--------------|---------------|
 ${agentRows}
 
 ## Commit Convention
@@ -23,6 +23,8 @@ All commits must include the agent prefix:
 \`\`\`
 [agent-name] short description of change
 \`\`\`
+
+Standalone projects can use \`jaiye-agent touch --agent <agent> <files...>\` instead of commit prefixes.
 
 ## Handoff Protocol
 

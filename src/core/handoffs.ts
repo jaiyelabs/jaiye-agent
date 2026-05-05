@@ -19,10 +19,14 @@ export function createHandoff(handoff: Handoff): string {
     to: handoff.to,
     timestamp: handoff.timestamp,
     branch: handoff.branch,
-    status: handoff.status
+    status: handoff.status,
+    context: handoff.context
   })
 
-  const filesTouchedList = handoff.files_touched.map(f => `- ${f}`).join('\n')
+  const filesTouchedList = handoff.files_touched.map(f => {
+    const meta = [f.artifact_type, f.description].filter(Boolean).join(' — ')
+    return `- ${f.path}${meta ? ` — ${meta}` : ''}`
+  }).join('\n')
 
   const content = `---
 ${frontmatter.trim()}
@@ -84,7 +88,10 @@ function parseHandoff(content: string): Handoff {
   // extract files from body
   const filesMatch = body.match(/## Files Touched\n([\s\S]*?)(?=\n## |$)/)
   const files = filesMatch
-    ? filesMatch[1].trim().split('\n').map(l => l.replace(/^- /, '').trim()).filter(Boolean)
+    ? filesMatch[1].trim().split('\n').map(l => {
+        const [file, artifact_type, description] = l.replace(/^- /, '').trim().split(' — ')
+        return { path: file, artifact_type, description }
+      }).filter(f => f.path && f.path !== 'No files listed.')
     : []
 
   const notesMatch = body.match(/## Notes\n([\s\S]*?)(?=\n## |$)/)
@@ -99,6 +106,7 @@ function parseHandoff(content: string): Handoff {
     status: (frontmatter.status as Handoff['status']) || 'clean',
     summary,
     files_touched: files,
-    notes
+    notes,
+    context: frontmatter.context as Handoff['context']
   }
 }

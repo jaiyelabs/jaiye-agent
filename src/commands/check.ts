@@ -1,11 +1,41 @@
 import { loadConfig } from '../core/config.js'
 import { detectConflicts } from '../core/ownership.js'
 import { getFilesInPR, getCommitsInPR, identifyAgent } from '../core/git.js'
+import { detectMode } from '../core/mode.js'
+import { stateEntries } from '../core/state.js'
 import { heading, success, error, dim, warn } from '../utils/format.js'
 
 export function checkCommand(options: { base?: string }) {
   const config = loadConfig()
   const baseBranch = options.base || config.settings.base_branch
+  const mode = detectMode()
+
+  if (mode === 'standalone') {
+    const conflicts = stateEntries(config).filter(entry =>
+      entry.assigned !== null &&
+      entry.last_touched_by !== null &&
+      entry.assigned !== entry.last_touched_by
+    )
+
+    console.log(heading('jaiye-agent check'))
+    console.log()
+    console.log(dim('Checking file ownership from .jaiye/state.json'))
+    console.log()
+
+    if (conflicts.length === 0) {
+      console.log(success('No ownership conflicts found.'))
+      process.exit(0)
+    }
+
+    for (const conflict of conflicts) {
+      console.log(error(`CONFLICT  ${conflict.file}`))
+      console.log(`  - ${dim(`assigned: ${conflict.assigned}`)} touched by ${conflict.last_touched_by}`)
+    }
+
+    console.log()
+    console.log(error(`${conflicts.length} conflict${conflicts.length > 1 ? 's' : ''} found.`))
+    process.exit(1)
+  }
 
   const files = getFilesInPR(baseBranch)
   const commits = getCommitsInPR(baseBranch)

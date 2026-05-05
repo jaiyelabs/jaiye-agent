@@ -1,14 +1,30 @@
-version: 1
+version: 2
+
+project:
+  name: "my-project"
+  type: "code"
 
 agents:
   - name: claude
     description: "Primary architect — complex features, refactoring"
+    type: cli
+    capabilities: [code_gen, file_io, git]
     commit_prefix: "[claude]"
   - name: codex
     description: "Integration, debugging, validation"
+    type: cli
+    capabilities: [code_gen, file_io, reasoning]
     commit_prefix: "[codex]"
+    bridge: ".jaiye/bridges/bridge.md"
+  - name: cowork
+    description: "Production operations, documents, research"
+    type: desktop
+    capabilities: [file_io, mcp, document_gen, web_search]
+    bridge: ".jaiye/bridges/bridge.md"
   - name: gemini
     description: "Routine tasks, documentation, research"
+    type: cli
+    capabilities: [code_gen, file_io, research]
     commit_prefix: "[gemini]"
 
 ownership:
@@ -21,5 +37,6 @@ ownership:
 
 settings:
   handoff_dir: ".jaiye/handoffs"
+  bridge_dir: ".jaiye/bridges"
   conflict_mode: "warn"
   base_branch: "main"
