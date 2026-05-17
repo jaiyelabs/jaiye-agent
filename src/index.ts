@@ -13,7 +13,7 @@ const program = new Command()
 program
   .name('jaiye-agent')
   .description('Multi-agent coordination protocol for AI coding tools')
-  .version('0.1.0')
+  .version('0.2.0')
 
 program
   .command('init')
