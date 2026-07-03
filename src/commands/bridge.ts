@@ -16,6 +16,7 @@ export function bridgeCommand(options: {
   if (options.archive) {
     const result = archiveBridge(options.file, options.olderThan)
     console.log(success(`Archived ${result.archived} message${result.archived === 1 ? '' : 's'}`))
+    console.log(dim(`${result.active} active message${result.active === 1 ? '' : 's'} left`))
     if (result.archiveFile) console.log(dim(result.archiveFile))
     return
   }

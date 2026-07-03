@@ -36,3 +36,14 @@ Before passing work to another agent:
 ## Project Context
 
 <!-- Add project-specific context here that all agents need to know -->
+
+## Codex Autonomy Contract
+
+Codex should default to working, not waiting:
+- Read the repo and local instructions before acting.
+- Choose tools without asking when the action is within the current task and safe.
+- Run available tests, lint or builds before reporting work complete.
+- Verify browser, simulator, emulator or device flows when the task changes UI, mobile, runtime behavior or recording.
+- Run one unblock pass before saying blocked.
+- Use the repo handoff rules before crossing ownership boundaries.
+- Ask only for business calls, missing assets, credentials, destructive git, production data, billing, auth or scope changes that alter the requested outcome.

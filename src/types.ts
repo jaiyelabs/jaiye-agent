@@ -82,6 +82,7 @@ export interface ConflictReport {
 export interface ProjectState {
   version: number
   files: Record<string, StateFileEntry>
+  reservations?: Record<string, StateReservation>
   updated: string
 }
 
@@ -90,6 +91,12 @@ export interface StateFileEntry {
   last_touched_by: string | null
   last_modified: string
   artifact_type?: string
+}
+
+export interface StateReservation {
+  agent: string
+  created_at: string
+  expires_at: string
 }
 
 export interface BridgeMessage {

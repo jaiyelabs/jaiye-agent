@@ -16,12 +16,20 @@ describe('bridge', () => {
       message: 'done',
       status: 'done'
     }, file)
+    appendBridgeMessage({
+      agent: 'codex',
+      timestamp: new Date().toISOString(),
+      message: 'still active',
+      status: 'action'
+    }, file)
 
-    expect(readBridgeMessages(file, 1)[0]).toContain('DONE: done')
+    expect(readBridgeMessages(file, 2).some(message => message.includes('DONE: done'))).toBe(true)
+    expect(readBridgeMessages(file, 0)).toHaveLength(0)
 
     const result = archiveBridge(file, '1d')
     expect(result.archived).toBe(1)
+    expect(result.active).toBe(1)
     expect(fs.existsSync(path.join(dir, 'bridge_archive.md'))).toBe(true)
-    expect(readBridgeMessages(file)).toHaveLength(0)
+    expect(readBridgeMessages(file)).toHaveLength(1)
   })
 })

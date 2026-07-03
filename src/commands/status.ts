@@ -2,23 +2,26 @@ import { loadConfig } from '../core/config.js'
 import { resolveOwnership } from '../core/ownership.js'
 import { getFilesChangedSince } from '../core/git.js'
 import { detectMode } from '../core/mode.js'
-import { stateEntries } from '../core/state.js'
+import { activeReservations, stateEntries } from '../core/state.js'
 import { heading, success, warn, error, dim, createTable } from '../utils/format.js'
 
 export function statusCommand() {
   const config = loadConfig()
   const mode = detectMode()
+  const reservations = activeReservations()
+  const reservedFiles = Object.keys(reservations)
   const files = mode === 'git'
     ? getFilesChangedSince('HEAD~10')
     : stateEntries(config).map(entry => entry.file)
+  const allFiles = [...new Set([...files, ...reservedFiles])].sort()
 
-  if (files.length === 0) {
+  if (allFiles.length === 0) {
     console.log(dim('No recent file changes found.'))
     return
   }
 
   const entries = mode === 'git'
-    ? resolveOwnership(files, config)
+    ? resolveOwnership(allFiles, config)
     : stateEntries(config).map(entry => ({
       file: entry.file,
       assigned_agent: entry.assigned,
@@ -29,18 +32,20 @@ export function statusCommand() {
   console.log(heading('jaiye-agent status'))
   console.log()
 
-  const table = createTable(['File', 'Assigned', 'Last Touched By', 'Status'])
+  const table = createTable(['File', 'Assigned', 'Last Touched By', 'Reserved', 'Status'])
 
   let conflictCount = 0
 
   for (const entry of entries) {
     const assigned = entry.assigned_agent || dim('unassigned')
     const touched = entry.last_touched_by || dim('unknown')
+    const reservation = reservations[entry.file]
+    const reserved = reservation ? `${reservation.agent} until ${reservation.expires_at}` : dim('none')
     const status = entry.conflict ? error('CONFLICT') : success('ok')
 
     if (entry.conflict) conflictCount++
 
-    table.push([entry.file, assigned, touched, status])
+    table.push([entry.file, assigned, touched, reserved, status])
   }
 
   console.log(table.toString())

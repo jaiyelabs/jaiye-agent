@@ -1,4 +1,5 @@
-import { Command } from 'commander'
+import { Command, InvalidArgumentError } from 'commander'
+import { pathToFileURL } from 'url'
 import { initCommand } from './commands/init.js'
 import { statusCommand } from './commands/status.js'
 import { handoffCommand } from './commands/handoff.js'
@@ -7,8 +8,24 @@ import { checkCommand } from './commands/check.js'
 import { touchCommand } from './commands/touch.js'
 import { syncCommand } from './commands/sync.js'
 import { bridgeCommand } from './commands/bridge.js'
+import { watchCommand } from './commands/watch.js'
+import { planCommand } from './commands/plan.js'
+import { releaseCommand } from './commands/release.js'
 
-const program = new Command()
+export const program = new Command()
+
+export function parsePositiveInt(value: string) {
+  if (!/^\d+$/.test(value)) {
+    throw new InvalidArgumentError('must be a positive number')
+  }
+
+  const parsed = parseInt(value)
+  if (parsed <= 0) {
+    throw new InvalidArgumentError('must be a positive number')
+  }
+
+  return parsed
+}
 
 program
   .name('jaiye-agent')
@@ -38,8 +55,8 @@ program
 program
   .command('log')
   .description('Show handoff history')
-  .option('--limit <n>', 'Number of entries', '10')
-  .action((opts) => logCommand({ limit: parseInt(opts.limit) }))
+  .option('--limit <n>', 'Number of entries', parsePositiveInt, 10)
+  .action((opts) => logCommand({ limit: opts.limit }))
 
 program
   .command('check')
@@ -60,6 +77,24 @@ program
   .action(syncCommand)
 
 program
+  .command('plan')
+  .alias('reserve')
+  .description('Reserve files before an agent starts work')
+  .requiredOption('--agent <agent>', 'Agent name')
+  .option('--hours <n>', 'Reservation length in hours', parsePositiveInt, 4)
+  .argument('<files...>', 'Files to reserve')
+  .action((files, opts) => planCommand({ agent: opts.agent, files, hours: opts.hours }))
+
+program
+  .command('release')
+  .alias('unreserve')
+  .description('Release reserved files')
+  .requiredOption('--agent <agent>', 'Agent name')
+  .option('--all', 'Release all reservations for agent')
+  .argument('[files...]', 'Files to release')
+  .action((files, opts) => releaseCommand({ agent: opts.agent, files, all: opts.all }))
+
+program
   .command('bridge')
   .description('Manage a project bridge')
   .option('--between <agents>', 'Agents using the bridge')
@@ -69,9 +104,20 @@ program
   .option('--message <text>', 'Message text')
   .option('--status <status>', 'Status marker')
   .option('--read', 'Read latest messages')
-  .option('--limit <n>', 'Number of messages', '10')
+  .option('--limit <n>', 'Number of messages', parsePositiveInt, 10)
   .option('--archive', 'Archive old DONE messages')
   .option('--older-than <age>', 'Archive age, like 7d', '7d')
   .action(bridgeCommand)
 
-program.parse()
+program
+  .command('watch')
+  .description('Start a live local browser view')
+  .option('--port <port>', 'Port to run on', parsePositiveInt, 8787)
+  .option('--host <host>', 'Host to bind', '127.0.0.1')
+  .option('--tasks-dir <path>', 'Task output directory')
+  .option('--open', 'Open in the browser')
+  .action(watchCommand)
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  program.parse()
+}

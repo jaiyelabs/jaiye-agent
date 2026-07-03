@@ -48,12 +48,14 @@ export function readBridgeMessages(file?: string, limit = 10): string[] {
 
   const content = fs.readFileSync(bridgeFile, 'utf-8')
   const parts = content.split(/\n(?=### )/).filter(part => part.startsWith('### '))
-  return parts.slice(-limit)
+  const count = Math.floor(limit)
+  if (!Number.isFinite(count) || count <= 0) return []
+  return parts.slice(-count)
 }
 
-export function archiveBridge(file?: string, olderThan = '7d'): { archived: number, archiveFile: string } {
+export function archiveBridge(file?: string, olderThan = '7d'): { archived: number, active: number, archiveFile: string } {
   const bridgeFile = resolveBridgeFile(file)
-  if (!fs.existsSync(bridgeFile)) return { archived: 0, archiveFile: '' }
+  if (!fs.existsSync(bridgeFile)) return { archived: 0, active: 0, archiveFile: '' }
 
   const content = fs.readFileSync(bridgeFile, 'utf-8')
   const firstMessage = content.indexOf('\n### ')
@@ -79,7 +81,7 @@ export function archiveBridge(file?: string, olderThan = '7d'): { archived: numb
   }
 
   if (archive.length === 0) {
-    return { archived: 0, archiveFile: archivePath(bridgeFile) }
+    return { archived: 0, active: keep.length, archiveFile: archivePath(bridgeFile) }
   }
 
   const archiveFile = archivePath(bridgeFile)
@@ -87,7 +89,7 @@ export function archiveBridge(file?: string, olderThan = '7d'): { archived: numb
   fs.appendFileSync(archiveFile, `${archiveHeader}\n\n${archive.join('\n\n')}\n`)
   fs.writeFileSync(bridgeFile, `${intro.trimEnd()}\n\n${keep.join('\n\n')}\n`)
 
-  return { archived: archive.length, archiveFile }
+  return { archived: archive.length, active: keep.length, archiveFile }
 }
 
 function archivePath(file: string): string {
