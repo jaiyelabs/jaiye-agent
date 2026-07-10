@@ -59,6 +59,8 @@ jaiye-agent init
 
 See which agent owns which files and spot conflicts instantly.
 
+Alias: `jaiye-agent ls`
+
 ```
 jaiye-agent status
 
@@ -85,6 +87,8 @@ jaiye-agent handoff --from claude --to codex --summary "auth flow done, need tes
 
 View handoff history.
 
+Alias: `jaiye-agent history`
+
 ```bash
 jaiye-agent log
 ```
@@ -95,6 +99,16 @@ CI mode. Exits with code 1 if multiple agents touched the same file in a PR.
 
 ```bash
 jaiye-agent check --base main
+```
+
+### `jaiye-agent sync`
+
+Rebuild `.jaiye/state.json` from the filesystem.
+
+Alias: `jaiye-agent refresh`
+
+```bash
+jaiye-agent sync
 ```
 
 ---

@@ -37,7 +37,7 @@ Persistent message board for ${agents}.
 export function appendBridgeMessage(message: BridgeMessage, file?: string): string {
   const bridgeFile = createBridge(file)
   const header = `### ${message.agent.toUpperCase()} - ${message.timestamp}`
-  const status = message.status ? `\n\n${message.status.toUpperCase()}: ${message.status}` : ''
+  const status = message.status ? `\n\n${formatStatus(message.status)}` : ''
   fs.appendFileSync(bridgeFile, `\n\n${header}\n\n${message.message}${status}\n`)
   return bridgeFile
 }
@@ -50,7 +50,7 @@ export function readBridgeMessages(file?: string, limit = 10): string[] {
   const parts = content.split(/\n(?=### )/).filter(part => part.startsWith('### '))
   const count = Math.floor(limit)
   if (!Number.isFinite(count) || count <= 0) return []
-  return parts.slice(-count)
+  return parts.slice(-count).reverse()
 }
 
 export function archiveBridge(file?: string, olderThan = '7d'): { archived: number, active: number, archiveFile: string } {
@@ -95,6 +95,13 @@ export function archiveBridge(file?: string, olderThan = '7d'): { archived: numb
 function archivePath(file: string): string {
   const parsed = path.parse(file)
   return path.join(parsed.dir, `${parsed.name}_archive${parsed.ext}`)
+}
+
+function formatStatus(status: string): string {
+  const parts = status.split(':')
+  const label = parts.shift() || status
+  const text = parts.join(':').trim() || status
+  return `${label.toUpperCase()}: ${text}`
 }
 
 function parseAge(value: string): number {

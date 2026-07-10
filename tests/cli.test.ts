@@ -1,3 +1,5 @@
+import fs from 'fs'
+import path from 'path'
 import { describe, expect, it } from 'vitest'
 import { parsePositiveInt, program } from '../src/index.js'
 
@@ -9,6 +11,35 @@ describe('cli', () => {
   it('keeps reserve as a plan alias', () => {
     const command = program.commands.find(command => command.name() === 'plan')
     expect(command?.aliases()).toContain('reserve')
+  })
+
+  it('rejects unsafe numbers', () => {
+    expect(() => parsePositiveInt('9007199254740992')).toThrow('must be a positive number')
+  })
+
+  it('uses the package version', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8'))
+    expect(program.version()).toBe(pkg.version)
+  })
+
+  it('keeps ls as a status alias', () => {
+    const command = program.commands.find(command => command.name() === 'status')
+    expect(command?.aliases()).toContain('ls')
+  })
+
+  it('keeps ci as a check alias', () => {
+    const command = program.commands.find(command => command.name() === 'check')
+    expect(command?.aliases()).toContain('ci')
+  })
+
+  it('keeps history as a log alias', () => {
+    const command = program.commands.find(command => command.name() === 'log')
+    expect(command?.aliases()).toContain('history')
+  })
+
+  it('keeps refresh as a sync alias', () => {
+    const command = program.commands.find(command => command.name() === 'sync')
+    expect(command?.aliases()).toContain('refresh')
   })
 
   it('rejects partial bridge limits', () => {

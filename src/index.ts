@@ -1,4 +1,5 @@
 import { Command, InvalidArgumentError } from 'commander'
+import { readFileSync } from 'fs'
 import { pathToFileURL } from 'url'
 import { initCommand } from './commands/init.js'
 import { statusCommand } from './commands/status.js'
@@ -13,14 +14,15 @@ import { planCommand } from './commands/plan.js'
 import { releaseCommand } from './commands/release.js'
 
 export const program = new Command()
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'))
 
 export function parsePositiveInt(value: string) {
   if (!/^\d+$/.test(value)) {
     throw new InvalidArgumentError('must be a positive number')
   }
 
-  const parsed = parseInt(value)
-  if (parsed <= 0) {
+  const parsed = Number(value)
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
     throw new InvalidArgumentError('must be a positive number')
   }
 
@@ -30,7 +32,7 @@ export function parsePositiveInt(value: string) {
 program
   .name('jaiye-agent')
   .description('Multi-agent coordination protocol for AI coding tools')
-  .version('0.2.0')
+  .version(pkg.version)
 
 program
   .command('init')
@@ -39,6 +41,7 @@ program
 
 program
   .command('status')
+  .alias('ls')
   .description('Show file ownership and conflicts')
   .action(statusCommand)
 
@@ -54,12 +57,14 @@ program
 
 program
   .command('log')
+  .alias('history')
   .description('Show handoff history')
   .option('--limit <n>', 'Number of entries', parsePositiveInt, 10)
   .action((opts) => logCommand({ limit: opts.limit }))
 
 program
   .command('check')
+  .alias('ci')
   .description('Check for ownership conflicts (CI mode)')
   .option('--base <branch>', 'Base branch to compare against')
   .action(checkCommand)
@@ -73,6 +78,7 @@ program
 
 program
   .command('sync')
+  .alias('refresh')
   .description('Sync .jaiye/state.json from the filesystem')
   .action(syncCommand)
 

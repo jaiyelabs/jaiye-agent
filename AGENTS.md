@@ -35,7 +35,12 @@ Before passing work to another agent:
 
 ## Project Context
 
-<!-- Add project-specific context here that all agents need to know -->
+- This IS the `jaiye-agent` CLI — the coordination tool the other repos use. Published to npm (v0.2.0). TypeScript, built with tsup, tested with vitest, CLI via commander.
+- `dist/` is the built bin (`jaiye-agent`). Rebuild with `npm run build` before publish. `prepublishOnly` runs the build.
+- Before reporting done, run `npm test`, `npm run typecheck`, `npm run build` (see WORKING_RULES.md). All 23 tests pass as of 2026-07-08.
+- HARDENING TODO (see `ops/decisions/security-audit-20260708.md`): `src/core/git.ts` interpolates `ref`, `baseBranch` and `hash` into `execSync` shell strings. Low practical risk (self-run CLI, owner-set CI args) but should move to `execFileSync` with arg arrays. `watch.ts` already uses `execFile` — follow that pattern.
+- The commit-log parser splits `git log` output on `|`; a commit message containing `|` corrupts a row. Known, not yet handled.
+- Roadmap: see `../ops/decisions/roadmaps-20260708.md` (jaiye-agent section).
 
 ## Codex Autonomy Contract
 
