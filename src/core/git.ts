@@ -6,6 +6,13 @@ function git(args: string[]): string {
   return execFileSync('git', args, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim()
 }
 
+function parseCommitLog(raw: string): CommitInfo[] {
+  return raw.split('\x1e').map(line => line.trim()).filter(Boolean).map(line => {
+    const [hash, author, message, date] = line.split('\x1f')
+    return { hash, author, message, date }
+  })
+}
+
 export function getCurrentBranch(): string {
   if (detectMode() === 'standalone') return ''
   return git(['branch', '--show-current'])
@@ -14,14 +21,11 @@ export function getCurrentBranch(): string {
 export function getRecentCommits(count = 20): CommitInfo[] {
   if (detectMode() === 'standalone') return []
   try {
-    const raw = git(['log', `-${count}`, '--format=%H|%an|%s|%aI'])
+    const raw = git(['log', `-${count}`, '--format=%H%x1f%an%x1f%s%x1f%aI%x1e'])
 
     if (!raw) return []
 
-    return raw.split('\n').map(line => {
-      const [hash, author, message, date] = line.split('|')
-      return { hash, author, message, date }
-    })
+    return parseCommitLog(raw)
   } catch {
     return []
   }
@@ -70,24 +74,18 @@ export function getFilesInPR(baseBranch: string): string[] {
 export function getCommitsInPR(baseBranch: string): CommitInfo[] {
   if (detectMode() === 'standalone') return []
   try {
-    const raw = git(['log', '--format=%H|%an|%s|%aI', `origin/${baseBranch}...HEAD`])
+    const raw = git(['log', '--format=%H%x1f%an%x1f%s%x1f%aI%x1e', `origin/${baseBranch}...HEAD`])
 
     if (!raw) return []
 
-    return raw.split('\n').map(line => {
-      const [hash, author, message, date] = line.split('|')
-      return { hash, author, message, date }
-    })
+    return parseCommitLog(raw)
   } catch {
     try {
-      const raw = git(['log', '--format=%H|%an|%s|%aI', `${baseBranch}...HEAD`])
+      const raw = git(['log', '--format=%H%x1f%an%x1f%s%x1f%aI%x1e', `${baseBranch}...HEAD`])
 
       if (!raw) return []
 
-      return raw.split('\n').map(line => {
-        const [hash, author, message, date] = line.split('|')
-        return { hash, author, message, date }
-      })
+      return parseCommitLog(raw)
     } catch {
       return []
     }

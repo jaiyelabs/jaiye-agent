@@ -117,6 +117,7 @@ program
 
 program
   .command('watch')
+  .alias('view')
   .description('Start a live local browser view')
   .option('--port <port>', 'Port to run on', parsePositiveInt, 8787)
   .option('--host <host>', 'Host to bind', '127.0.0.1')

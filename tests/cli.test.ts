@@ -52,4 +52,9 @@ describe('cli', () => {
     const command = program.commands.find(command => command.name() === 'release')
     expect(command?.aliases()).toContain('unreserve')
   })
+
+  it('keeps view as a watch alias', () => {
+    const command = program.commands.find(command => command.name() === 'watch')
+    expect(command?.aliases()).toContain('view')
+  })
 })
