@@ -40,4 +40,30 @@ describe('bridge command', () => {
     expect(logs[0]).toContain('DONE: first pass')
     expect(logs[0]).not.toContain('DONE: done: first pass')
   })
+
+  it('rejects invalid read limits', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jaiye-bridge-command-'))
+    const file = path.join(dir, 'bridge.md')
+    const logs: string[] = []
+    vi.spyOn(console, 'log').mockImplementation(message => logs.push(String(message)))
+    vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('exit')
+    }) as never)
+
+    expect(() => bridgeCommand({ file, read: true, limit: '2x' })).toThrow('exit')
+    expect(logs[0]).toContain('Invalid limit.')
+  })
+
+  it('rejects empty read limits', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jaiye-bridge-command-'))
+    const file = path.join(dir, 'bridge.md')
+    const logs: string[] = []
+    vi.spyOn(console, 'log').mockImplementation(message => logs.push(String(message)))
+    vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('exit')
+    }) as never)
+
+    expect(() => bridgeCommand({ file, read: true, limit: '' })).toThrow('exit')
+    expect(logs[0]).toContain('Invalid limit.')
+  })
 })

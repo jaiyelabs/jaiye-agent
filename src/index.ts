@@ -17,7 +17,7 @@ export const program = new Command()
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'))
 
 export function parsePositiveInt(value: string) {
-  if (!/^\d+$/.test(value)) {
+  if (!/^\+?\d+$/.test(value)) {
     throw new InvalidArgumentError('must be a positive number')
   }
 
@@ -71,6 +71,7 @@ program
 
 program
   .command('touch')
+  .alias('mark')
   .description('Register that an agent touched files')
   .requiredOption('--agent <agent>', 'Agent name')
   .argument('<files...>', 'Files touched')
@@ -102,6 +103,7 @@ program
 
 program
   .command('bridge')
+  .alias('board')
   .description('Manage a project bridge')
   .option('--between <agents>', 'Agents using the bridge')
   .option('--file <path>', 'Bridge file path')

@@ -11,7 +11,7 @@ export function bridgeCommand(options: {
   read?: boolean
   archive?: boolean
   olderThan?: string
-  limit?: string
+  limit?: number | string
 }) {
   if (options.archive) {
     const result = archiveBridge(options.file, options.olderThan)
@@ -40,7 +40,13 @@ export function bridgeCommand(options: {
   }
 
   if (options.read) {
-    const messages = readBridgeMessages(options.file, parseInt(options.limit || '10'))
+    const limit = options.limit === undefined ? 10 : Number(options.limit)
+    if (!Number.isSafeInteger(limit) || limit <= 0) {
+      console.log(error('Invalid limit.'))
+      process.exit(1)
+    }
+
+    const messages = readBridgeMessages(options.file, limit)
     if (messages.length === 0) {
       console.log(dim('No bridge messages found.'))
       return

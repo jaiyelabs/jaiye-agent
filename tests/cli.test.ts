@@ -8,6 +8,10 @@ describe('cli', () => {
     expect(() => parsePositiveInt('2x')).toThrow('must be a positive number')
   })
 
+  it('accepts plus-prefixed positive numbers', () => {
+    expect(parsePositiveInt('+2')).toBe(2)
+  })
+
   it('keeps reserve as a plan alias', () => {
     const command = program.commands.find(command => command.name() === 'plan')
     expect(command?.aliases()).toContain('reserve')
@@ -42,6 +46,11 @@ describe('cli', () => {
     expect(command?.aliases()).toContain('refresh')
   })
 
+  it('keeps mark as a touch alias', () => {
+    const command = program.commands.find(command => command.name() === 'touch')
+    expect(command?.aliases()).toContain('mark')
+  })
+
   it('rejects partial bridge limits', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     const option = command?.options.find(option => option.long === '--limit')
@@ -56,5 +65,10 @@ describe('cli', () => {
   it('keeps view as a watch alias', () => {
     const command = program.commands.find(command => command.name() === 'watch')
     expect(command?.aliases()).toContain('view')
+  })
+
+  it('keeps board as a bridge alias', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.aliases()).toContain('board')
   })
 })

@@ -1,8 +1,13 @@
 import { listHandoffs } from '../core/handoffs.js'
-import { heading, dim, createTable } from '../utils/format.js'
+import { heading, dim, createTable, error } from '../utils/format.js'
 
-export function logCommand(options: { limit?: number }) {
-  const limit = options.limit || 10
+export function logCommand(options: { limit?: number | string }) {
+  const limit = options.limit === undefined ? 10 : Number(options.limit)
+  if (!Number.isSafeInteger(limit) || limit <= 0) {
+    console.log(error('Invalid limit.'))
+    process.exit(1)
+  }
+
   const handoffs = listHandoffs().slice(0, limit)
 
   if (handoffs.length === 0) {
