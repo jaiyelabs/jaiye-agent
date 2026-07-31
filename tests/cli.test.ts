@@ -1,7 +1,11 @@
 import fs from 'fs'
 import path from 'path'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parsePositiveInt, program } from '../src/index.js'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('cli', () => {
   it('rejects partial numbers', () => {
@@ -29,6 +33,75 @@ describe('cli', () => {
   it('keeps ls as a status alias', () => {
     const command = program.commands.find(command => command.name() === 'status')
     expect(command?.aliases()).toContain('ls')
+  })
+
+  it('keeps reserved as a status option', () => {
+    const command = program.commands.find(command => command.name() === 'status')
+    expect(command?.options.some(option => option.long === '--reserved')).toBe(true)
+  })
+
+  it('keeps reserved as a status short option', () => {
+    const command = program.commands.find(command => command.name() === 'status')
+    expect(command?.options.some(option => option.short === '-r')).toBe(true)
+  })
+
+  it('rejects stray args for option-only commands', () => {
+    const cases = [
+      { name: 'init', args: ['extra'] },
+      { name: 'status', args: ['extra'] },
+      { name: 'handoff', args: ['--from', 'claude', '--to', 'codex', 'extra'] },
+      { name: 'log', args: ['extra'] },
+      { name: 'check', args: ['extra'] },
+      { name: 'sync', args: ['extra'] },
+      { name: 'bridge', args: ['extra'] },
+      { name: 'watch', args: ['extra'] }
+    ]
+
+    for (const { name, args } of cases) {
+      const command = program.commands.find(command => command.name() === name)
+      command?.exitOverride()
+      command?.configureOutput({ writeErr: () => {}, writeOut: () => {} })
+
+      let error: unknown
+      try {
+        command?.parse(args, { from: 'user' })
+      } catch (err) {
+        error = err
+      }
+
+      expect(error).toMatchObject({ code: 'commander.excessArguments' })
+    }
+  })
+
+  it('keeps pass as a handoff alias', () => {
+    const command = program.commands.find(command => command.name() === 'handoff')
+    expect(command?.aliases()).toContain('pass')
+  })
+
+  it('rejects stray args through command aliases', () => {
+    const cases = [
+      { name: 'ls', args: ['extra'] },
+      { name: 'history', args: ['extra'] },
+      { name: 'ci', args: ['extra'] },
+      { name: 'refresh', args: ['extra'] },
+      { name: 'board', args: ['extra'] },
+      { name: 'view', args: ['extra'] }
+    ]
+
+    for (const { name, args } of cases) {
+      const command = program.commands.find(command => command.aliases().includes(name))
+      command?.exitOverride()
+      command?.configureOutput({ writeErr: () => {}, writeOut: () => {} })
+
+      let error: unknown
+      try {
+        command?.parse(args, { from: 'user' })
+      } catch (err) {
+        error = err
+      }
+
+      expect(error).toMatchObject({ code: 'commander.excessArguments' })
+    }
   })
 
   it('keeps ci as a check alias', () => {
@@ -60,6 +133,28 @@ describe('cli', () => {
   it('keeps unreserve as a release alias', () => {
     const command = program.commands.find(command => command.name() === 'release')
     expect(command?.aliases()).toContain('unreserve')
+  })
+
+  it('keeps free as a release alias', () => {
+    const command = program.commands.find(command => command.name() === 'release')
+    expect(command?.aliases()).toContain('free')
+  })
+
+  it('rejects files with release all', () => {
+    const command = program.commands.find(command => command.name() === 'release')
+    command?.exitOverride()
+    command?.configureOutput({ writeErr: () => {}, writeOut: () => {} })
+    const logs: string[] = []
+    vi.spyOn(console, 'log').mockImplementation(message => logs.push(String(message)))
+    vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('exit')
+    }) as never)
+
+    expect(() => {
+      command?.parse(['--agent', 'codex', '--all', 'notes.md'], { from: 'user' })
+    }).toThrow('exit')
+
+    expect(logs[0]).toContain('Do not pass files with --all.')
   })
 
   it('keeps view as a watch alias', () => {

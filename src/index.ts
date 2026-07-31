@@ -12,6 +12,7 @@ import { bridgeCommand } from './commands/bridge.js'
 import { watchCommand } from './commands/watch.js'
 import { planCommand } from './commands/plan.js'
 import { releaseCommand } from './commands/release.js'
+import { error } from './utils/format.js'
 
 export const program = new Command()
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'))
@@ -37,22 +38,27 @@ program
 program
   .command('init')
   .description('Initialize jaiye-agent in the current project')
+  .allowExcessArguments(false)
   .action(initCommand)
 
 program
   .command('status')
   .alias('ls')
   .description('Show file ownership and conflicts')
+  .option('-r, --reserved', 'Show only reserved files')
+  .allowExcessArguments(false)
   .action(statusCommand)
 
 program
   .command('handoff')
+  .alias('pass')
   .description('Create a structured handoff between agents')
   .requiredOption('--from <agent>', 'Agent handing off')
   .requiredOption('--to <agent>', 'Agent receiving')
   .option('--summary <text>', 'Short summary of the handoff')
   .option('--mode <mode>', 'Context mode')
   .option('--context <text>', 'Context note')
+  .allowExcessArguments(false)
   .action(handoffCommand)
 
 program
@@ -60,6 +66,7 @@ program
   .alias('history')
   .description('Show handoff history')
   .option('--limit <n>', 'Number of entries', parsePositiveInt, 10)
+  .allowExcessArguments(false)
   .action((opts) => logCommand({ limit: opts.limit }))
 
 program
@@ -67,6 +74,7 @@ program
   .alias('ci')
   .description('Check for ownership conflicts (CI mode)')
   .option('--base <branch>', 'Base branch to compare against')
+  .allowExcessArguments(false)
   .action(checkCommand)
 
 program
@@ -81,6 +89,7 @@ program
   .command('sync')
   .alias('refresh')
   .description('Sync .jaiye/state.json from the filesystem')
+  .allowExcessArguments(false)
   .action(syncCommand)
 
 program
@@ -95,11 +104,19 @@ program
 program
   .command('release')
   .alias('unreserve')
+  .alias('free')
   .description('Release reserved files')
   .requiredOption('--agent <agent>', 'Agent name')
   .option('--all', 'Release all reservations for agent')
   .argument('[files...]', 'Files to release')
-  .action((files, opts) => releaseCommand({ agent: opts.agent, files, all: opts.all }))
+  .action((files, opts) => {
+    if (opts.all && files.length > 0) {
+      console.log(error('Do not pass files with --all.'))
+      process.exit(1)
+    }
+
+    releaseCommand({ agent: opts.agent, files, all: opts.all })
+  })
 
 program
   .command('bridge')
@@ -115,6 +132,7 @@ program
   .option('--limit <n>', 'Number of messages', parsePositiveInt, 10)
   .option('--archive', 'Archive old DONE messages')
   .option('--older-than <age>', 'Archive age, like 7d', '7d')
+  .allowExcessArguments(false)
   .action(bridgeCommand)
 
 program
@@ -125,6 +143,7 @@ program
   .option('--host <host>', 'Host to bind', '127.0.0.1')
   .option('--tasks-dir <path>', 'Task output directory')
   .option('--open', 'Open in the browser')
+  .allowExcessArguments(false)
   .action(watchCommand)
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
