@@ -49,4 +49,21 @@ describe('bridge', () => {
     expect(messages[0]).toContain('DONE: source map added')
     expect(messages[0]).not.toContain('DONE: done: source map added')
   })
+
+  it('archives epoch timestamps', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jaiye-bridge-'))
+    const file = path.join(dir, 'bridge.md')
+
+    appendBridgeMessage({
+      agent: 'codex',
+      timestamp: '1970-01-01T00:00:00.000Z',
+      message: 'old done',
+      status: 'done'
+    }, file)
+
+    const result = archiveBridge(file, '1d')
+
+    expect(result.archived).toBe(1)
+    expect(readBridgeMessages(file)).toHaveLength(0)
+  })
 })

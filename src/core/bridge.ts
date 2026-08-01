@@ -73,7 +73,7 @@ export function archiveBridge(file?: string, olderThan = '7d'): { archived: numb
     const date = message.match(/^### .+? - (.+)$/m)?.[1] || ''
     const time = Date.parse(date)
 
-    if (isDone && time && time < cutoff) {
+    if (isDone && !Number.isNaN(time) && time < cutoff) {
       archive.push(message)
     } else {
       keep.push(message)
