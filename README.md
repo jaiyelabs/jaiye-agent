@@ -5,8 +5,8 @@
 <h1 align="center">jaiye-agent</h1>
 
 <p align="center">
-  The coordination layer for multi-agent coding workflows.<br/>
-  File ownership. Structured handoffs. Conflict detection.
+  Repo-native coordination for AI coding agents that do not share a runtime.<br/>
+  File ownership. Structured handoffs. CI-ready conflict detection.
 </p>
 
 <p align="center">
@@ -22,13 +22,13 @@
 
 Most teams are **agent-rich but strategy-poor.** They have Claude Code, Codex, Gemini CLI, Cursor and Copilot — but no coordination between them. The result: agents editing the same files, undoing each other's work and burning tokens re-learning context that was already discovered.
 
-**37% of multi-agent failures** come from integration errors — agents working in isolation that produce correct code individually but break at the seam.
+Agents working in isolation can produce correct code individually and still break when their work meets the rest of the repo.
 
 ## The Fix
 
-`jaiye-agent` adds a shared memory bus to your repo. It tracks which agent owns which files, creates structured handoffs when work passes between agents and catches conflicts before they hit production.
+`jaiye-agent` gives Claude Code, Codex, Gemini CLI, Cursor and other tools a common protocol for file ownership, structured handoffs, same-file conflict checks and shared project context.
 
-It's not a platform. It's not a dashboard. It lives inside your repo — invisible orchestration that works with the tools you already use.
+It's not a hosted platform. It's not a replacement for the tools you already use. It lives inside your repo.
 
 ---
 
@@ -42,6 +42,18 @@ This creates:
 - `.jaiye/config.yaml` — agent definitions and file ownership rules
 - `AGENTS.md` — the shared state file all agents read before starting work
 - `.jaiye/handoffs/` — local handoff log directory
+
+## 30-Second Flow
+
+```bash
+jaiye-agent init
+jaiye-agent plan --agent claude src/auth.ts
+jaiye-agent touch --agent claude src/auth.ts
+jaiye-agent handoff --from claude --to codex --summary "auth flow done, need tests"
+jaiye-agent check --base main
+```
+
+That gives each tool a shared project protocol before it starts editing, records which agent touched what and catches same-file collisions before the PR merges.
 
 ---
 
@@ -171,6 +183,8 @@ The handoff includes git context, files touched, current status, assumptions and
 ---
 
 ## CI Integration
+
+Git handles same-line merge conflicts. `jaiye-agent check` catches an earlier signal: two agents touched the same file in the same PR window, even when git can merge the lines cleanly.
 
 Add to your GitHub Actions workflow:
 
