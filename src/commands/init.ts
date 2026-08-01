@@ -6,9 +6,9 @@ import { detectMode, detectProjectType, getProjectRoot } from '../core/mode.js'
 import { generateAgentsMd } from '../core/agents-md.js'
 import { parseYaml } from '../utils/yaml.js'
 import { success, warn, dim } from '../utils/format.js'
-import type { JaiyeConfig } from '../types.js'
+import type { JaiyeConfig, OwnershipRule } from '../types.js'
 
-export function initCommand() {
+export function initCommand(options: { scan?: boolean } = {}) {
   const root = getProjectRoot()
   const mode = detectMode()
   const projectType = detectProjectType(root)
@@ -103,6 +103,11 @@ settings:
     }
   }
 
+  if (options.scan) {
+    const rules = scanOwnership(root, projectType)
+    configTemplate = replaceOwnership(configTemplate, rules)
+  }
+
   fs.writeFileSync(configPath, configTemplate)
 
   // generate AGENTS.md
@@ -117,9 +122,85 @@ settings:
   console.log(`  ${dim('Handoffs:')} .jaiye/handoffs/`)
   console.log(`  ${dim('Mode:')}     ${mode}`)
   console.log(`  ${dim('Type:')}     ${projectType}`)
+  if (options.scan) {
+    console.log(`  ${dim('Scan:')}     ownership inferred from project files`)
+  }
   console.log()
-  console.log(dim('Next: edit .jaiye/config.yaml to match your project structure.'))
+  console.log(dim(options.scan
+    ? 'Next: review .jaiye/config.yaml before using it in CI.'
+    : 'Next: edit .jaiye/config.yaml to match your project structure.'))
   if (mode === 'git') {
     console.log(dim('Consider adding .jaiye/handoffs/ to .gitignore.'))
   }
+}
+
+export function scanOwnership(root: string, projectType: string): OwnershipRule[] {
+  const entries = new Set(listProjectEntries(root))
+  const rules: OwnershipRule[] = []
+
+  const add = (pattern: string, agent: string, artifact_type?: string) => {
+    if (!rules.some(rule => rule.pattern === pattern)) {
+      rules.push({ pattern, agent, ...(artifact_type ? { artifact_type } : {}) })
+    }
+  }
+
+  if (entries.has('src')) add('src/**', 'claude', 'code')
+  if (entries.has('app')) add('app/**', 'claude', 'code')
+  if (entries.has('lib')) add('lib/**', 'claude', 'code')
+  if (entries.has('components')) add('components/**', 'codex', 'code')
+  if (entries.has('pages')) add('pages/**', 'claude', 'code')
+  if (entries.has('api')) add('api/**', 'claude', 'code')
+  if (entries.has('scripts')) add('scripts/**', 'codex', 'code')
+  if (entries.has('tests')) add('tests/**', 'codex', 'code')
+  if (entries.has('__tests__')) add('__tests__/**', 'codex', 'code')
+  if (entries.has('docs')) add('docs/**', 'gemini', 'document')
+  if (entries.has('README.md')) add('README.md', 'gemini', 'document')
+
+  if (projectType === 'media') {
+    add('*.mov', 'cowork', 'media')
+    add('*.mp4', 'cowork', 'media')
+    add('*.mp3', 'cowork', 'media')
+    add('*.wav', 'cowork', 'media')
+  } else if (projectType === 'content' || projectType === 'mixed') {
+    add('*.md', 'gemini', 'document')
+    add('*.docx', 'cowork', 'document')
+    add('*.xlsx', 'cowork', 'data')
+    add('*.csv', 'cowork', 'data')
+  }
+
+  return rules.length > 0 ? rules : [
+    { pattern: 'src/**', agent: 'claude' },
+    { pattern: 'tests/**', agent: 'codex' },
+    { pattern: 'docs/**', agent: 'gemini' }
+  ]
+}
+
+function replaceOwnership(configTemplate: string, rules: OwnershipRule[]) {
+  const yaml = [
+    'ownership:',
+    ...rules.map(rule => {
+      const lines = [
+        `  - pattern: "${rule.pattern}"`,
+        `    agent: ${rule.agent}`
+      ]
+      if (rule.artifact_type) lines.push(`    artifact_type: ${rule.artifact_type}`)
+      return lines.join('\n')
+    })
+  ].join('\n')
+
+  return configTemplate.replace(/ownership:\n(?:  - .+\n(?:    .+\n)*)+/, `${yaml}\n`)
+}
+
+function listProjectEntries(root: string) {
+  const ignored = new Set(['.git', 'node_modules', 'dist', '.jaiye'])
+  let entries: fs.Dirent[]
+  try {
+    entries = fs.readdirSync(root, { withFileTypes: true })
+  } catch {
+    return []
+  }
+
+  return entries
+    .filter(entry => !ignored.has(entry.name))
+    .map(entry => entry.name)
 }

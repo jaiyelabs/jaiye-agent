@@ -35,7 +35,7 @@ It's not a hosted platform. It's not a replacement for the tools you already use
 ## Install
 
 ```bash
-npx jaiye-agent init
+npx jaiye-agent init --scan
 ```
 
 This creates:
@@ -43,10 +43,12 @@ This creates:
 - `AGENTS.md` — the shared state file all agents read before starting work
 - `.jaiye/handoffs/` — local handoff log directory
 
+`--scan` infers first-pass ownership rules from your project folders and files. Review them before turning on CI.
+
 ## 30-Second Flow
 
 ```bash
-jaiye-agent init
+jaiye-agent init --scan
 jaiye-agent plan --agent claude src/auth.ts
 jaiye-agent touch --agent claude src/auth.ts
 jaiye-agent handoff --from claude --to codex --summary "auth flow done, need tests"
@@ -64,8 +66,10 @@ That gives each tool a shared project protocol before it starts editing, records
 Scaffold the protocol in your repo.
 
 ```bash
-jaiye-agent init
+jaiye-agent init --scan
 ```
+
+Use plain `jaiye-agent init` if you want to start from the default ownership map.
 
 ### `jaiye-agent status`
 
@@ -186,7 +190,14 @@ The handoff includes git context, files touched, current status, assumptions and
 
 Git handles same-line merge conflicts. `jaiye-agent check` catches an earlier signal: two agents touched the same file in the same PR window, even when git can merge the lines cleanly.
 
-Add to your GitHub Actions workflow:
+Minimal setup:
+
+```yaml
+- uses: actions/checkout@v4
+- uses: jaiyelabs/jaiye-agent@v1
+```
+
+Full setup:
 
 ```yaml
 name: Agent Check
@@ -211,24 +222,52 @@ npx jaiye-agent check --base main
 
 ---
 
+## Dogfood Case
+
+In this repo, `src/**` is owned by Claude, `tests/**` by Codex and `docs/**` by Gemini. If Claude and Codex both touch `src/core/git.ts` in the same PR window, `jaiye-agent check --base main` reports the file as a conflict before merge time.
+
+That is the core job: catch same-file, different-agent drift while the work is still cheap to coordinate.
+
+## Services
+
+Jaiye Labs can set this up for teams already using Claude Code, Codex, Cursor, Aider or Gemini CLI:
+
+- agent role design
+- `.jaiye/config.yaml` ownership map
+- CI conflict gate
+- handoff protocol
+- audit trail for agent-touched files
+
+Typical setup: $5k-$25k depending on repo count, team size and CI complexity.
+
+---
+
 ## Configuration
 
-Full `.jaiye/config.yaml` reference:
+See [docs/config-spec.md](docs/config-spec.md) for the config format. Minimal example:
 
 ```yaml
-version: 1
+version: 2
+
+project:
+  name: "my-project"
+  type: "code"
 
 agents:
   - name: claude
     description: "Primary architect"
+    type: cli
+    capabilities: [code_gen, file_io, git]
     commit_prefix: "[claude]"
 
 ownership:
   - pattern: "src/**"
     agent: claude
+    artifact_type: code
 
 settings:
   handoff_dir: ".jaiye/handoffs"
+  bridge_dir: ".jaiye/bridges"
   conflict_mode: "warn"       # "warn" or "error"
   base_branch: "main"
 ```

@@ -38,6 +38,7 @@ program
 program
   .command('init')
   .description('Initialize jaiye-agent in the current project')
+  .option('--scan', 'Infer ownership rules from the project structure')
   .allowExcessArguments(false)
   .action(initCommand)
 
@@ -45,6 +46,7 @@ program
   .command('status')
   .alias('ls')
   .description('Show file ownership and conflicts')
+  .option('-a, --all', 'Show all tracked files')
   .option('-r, --reserved', 'Show only reserved files')
   .allowExcessArguments(false)
   .action(statusCommand)
