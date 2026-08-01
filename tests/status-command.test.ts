@@ -1,6 +1,7 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
+import { execFileSync } from 'child_process'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { statusCommand } from '../src/commands/status.js'
 
@@ -64,5 +65,37 @@ describe('status command', () => {
     const output = logs.join('\n')
     expect(output).toContain('missing.md')
     expect(output).not.toContain('notes.md')
+  })
+
+  it('shows all tracked files', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jaiye-status-command-'))
+    process.chdir(dir)
+    execFileSync('git', ['init'], { stdio: 'ignore' })
+    execFileSync('git', ['config', 'user.email', 'codex@example.com'])
+    execFileSync('git', ['config', 'user.name', 'Codex'])
+    fs.mkdirSync('.jaiye')
+    fs.writeFileSync(path.join('.jaiye', 'config.yaml'), `
+version: 2
+agents:
+  - name: codex
+    description: codex
+ownership:
+  - pattern: "*.md"
+    agent: codex
+settings:
+  handoff_dir: ".jaiye/handoffs"
+  conflict_mode: "warn"
+  base_branch: "main"
+`)
+    fs.writeFileSync('notes.md', 'hello')
+    execFileSync('git', ['add', '.'])
+    execFileSync('git', ['commit', '-m', '[codex] first'], { stdio: 'ignore' })
+
+    const logs: string[] = []
+    vi.spyOn(console, 'log').mockImplementation(message => logs.push(String(message)))
+
+    statusCommand({ all: true })
+
+    expect(logs.join('\n')).toContain('notes.md')
   })
 })

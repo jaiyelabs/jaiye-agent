@@ -51,6 +51,18 @@ export function getFilesChangedSince(ref: string): string[] {
   }
 }
 
+export function getTrackedFiles(): string[] {
+  if (detectMode() === 'standalone') return []
+  try {
+    const raw = git(['ls-files'])
+
+    if (!raw) return []
+    return raw.split('\n')
+  } catch {
+    return []
+  }
+}
+
 export function getFilesInPR(baseBranch: string): string[] {
   if (detectMode() === 'standalone') return []
   try {

@@ -1,18 +1,18 @@
 import { loadConfig } from '../core/config.js'
 import { findOwner, resolveOwnership } from '../core/ownership.js'
-import { getFilesChangedSince } from '../core/git.js'
+import { getFilesChangedSince, getTrackedFiles } from '../core/git.js'
 import { detectMode } from '../core/mode.js'
 import { activeReservations, stateEntries } from '../core/state.js'
 import { heading, success, warn, error, dim, createTable } from '../utils/format.js'
 
-export function statusCommand(options: { reserved?: boolean } = {}) {
+export function statusCommand(options: { all?: boolean, reserved?: boolean } = {}) {
   const config = loadConfig()
   const mode = detectMode()
   const reservations = activeReservations()
   const reservedFiles = Object.keys(reservations)
   const state = mode === 'git' ? [] : stateEntries(config)
   const files = mode === 'git'
-    ? getFilesChangedSince('HEAD~10')
+    ? options.all ? getTrackedFiles() : getFilesChangedSince('HEAD~10')
     : state.map(entry => entry.file)
   const allFiles = [...new Set([...files, ...reservedFiles])].sort()
   const shownFiles = options.reserved
@@ -20,7 +20,7 @@ export function statusCommand(options: { reserved?: boolean } = {}) {
     : allFiles
 
   if (shownFiles.length === 0) {
-    console.log(dim(options.reserved ? 'No active reservations found.' : 'No recent file changes found.'))
+    console.log(dim(options.reserved ? 'No active reservations found.' : options.all ? 'No tracked files found.' : 'No recent file changes found.'))
     return
   }
 

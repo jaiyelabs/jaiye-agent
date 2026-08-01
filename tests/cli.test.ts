@@ -40,9 +40,19 @@ describe('cli', () => {
     expect(command?.options.some(option => option.long === '--reserved')).toBe(true)
   })
 
+  it('keeps all as a status option', () => {
+    const command = program.commands.find(command => command.name() === 'status')
+    expect(command?.options.some(option => option.long === '--all')).toBe(true)
+  })
+
   it('keeps reserved as a status short option', () => {
     const command = program.commands.find(command => command.name() === 'status')
     expect(command?.options.some(option => option.short === '-r')).toBe(true)
+  })
+
+  it('keeps all as a status short option', () => {
+    const command = program.commands.find(command => command.name() === 'status')
+    expect(command?.options.some(option => option.short === '-a')).toBe(true)
   })
 
   it('rejects stray args for option-only commands', () => {
