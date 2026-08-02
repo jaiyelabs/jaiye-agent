@@ -13,7 +13,8 @@
   <a href="#install">Install</a> &middot;
   <a href="#commands">Commands</a> &middot;
   <a href="#how-it-works">How It Works</a> &middot;
-  <a href="#ci-integration">CI Integration</a>
+  <a href="#ci-integration">CI Integration</a> &middot;
+  <a href="docs/dogfood-case.md">Case Study</a>
 </p>
 
 ---
@@ -227,6 +228,8 @@ npx jaiye-agent check --base main
 In this repo, `src/**` is owned by Claude, `tests/**` by Codex and `docs/**` by Gemini. If Claude and Codex both touch `src/core/git.ts` in the same PR window, `jaiye-agent check --base main` reports the file as a conflict before merge time.
 
 That is the core job: catch same-file, different-agent drift while the work is still cheap to coordinate.
+
+See the reproducible walkthrough: [same-file agent collision](docs/dogfood-case.md).
 
 ## Services
 
