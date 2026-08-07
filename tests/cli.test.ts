@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { parsePositiveInt, program } from '../src/index.js'
+import { parsePort, parsePositiveInt, program } from '../src/index.js'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -12,8 +12,24 @@ describe('cli', () => {
     expect(() => parsePositiveInt('2x')).toThrow('must be a positive number')
   })
 
+  it('rejects padded numbers', () => {
+    expect(() => parsePositiveInt(' 2')).toThrow('must be a positive number')
+  })
+
   it('accepts plus-prefixed positive numbers', () => {
     expect(parsePositiveInt('+2')).toBe(2)
+  })
+
+  it('rejects invalid ports', () => {
+    expect(() => parsePort('65536')).toThrow('must be a valid port')
+  })
+
+  it('accepts the highest port', () => {
+    expect(parsePort('65535')).toBe(65535)
+  })
+
+  it('accepts port zero', () => {
+    expect(parsePort('0')).toBe(0)
   })
 
   it('keeps reserve as a plan alias', () => {
@@ -53,6 +69,11 @@ describe('cli', () => {
   it('keeps all as a status short option', () => {
     const command = program.commands.find(command => command.name() === 'status')
     expect(command?.options.some(option => option.short === '-a')).toBe(true)
+  })
+
+  it('keeps agent as a status option', () => {
+    const command = program.commands.find(command => command.name() === 'status')
+    expect(command?.options.some(option => option.long === '--agent')).toBe(true)
   })
 
   it('rejects stray args for option-only commands', () => {
@@ -119,6 +140,11 @@ describe('cli', () => {
     expect(command?.aliases()).toContain('ci')
   })
 
+  it('keeps base as a check short option', () => {
+    const command = program.commands.find(command => command.name() === 'check')
+    expect(command?.options.some(option => option.short === '-b')).toBe(true)
+  })
+
   it('keeps history as a log alias', () => {
     const command = program.commands.find(command => command.name() === 'log')
     expect(command?.aliases()).toContain('history')
@@ -138,6 +164,19 @@ describe('cli', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     const option = command?.options.find(option => option.long === '--limit')
     expect(() => option?.parseArg?.('2x', undefined)).toThrow('must be a positive number')
+  })
+
+  it('keeps limit short options', () => {
+    const log = program.commands.find(command => command.name() === 'log')
+    const bridge = program.commands.find(command => command.name() === 'bridge')
+
+    expect(log?.options.some(option => option.short === '-n')).toBe(true)
+    expect(bridge?.options.some(option => option.short === '-n')).toBe(true)
+  })
+
+  it('keeps file as a bridge short option', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.options.some(option => option.short === '-f')).toBe(true)
   })
 
   it('keeps unreserve as a release alias', () => {
@@ -170,6 +209,16 @@ describe('cli', () => {
   it('keeps view as a watch alias', () => {
     const command = program.commands.find(command => command.name() === 'watch')
     expect(command?.aliases()).toContain('view')
+  })
+
+  it('keeps port as a watch short option', () => {
+    const command = program.commands.find(command => command.name() === 'watch')
+    expect(command?.options.some(option => option.short === '-p')).toBe(true)
+  })
+
+  it('keeps tasks dir as a watch short option', () => {
+    const command = program.commands.find(command => command.name() === 'watch')
+    expect(command?.options.some(option => option.short === '-d')).toBe(true)
   })
 
   it('keeps board as a bridge alias', () => {

@@ -41,6 +41,35 @@ describe('plan', () => {
     expect(fs.existsSync(path.join('.jaiye', 'state.json'))).toBe(false)
   })
 
+  it('rejects fractional direct hours', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jaiye-plan-'))
+    process.chdir(dir)
+    fs.mkdirSync('.jaiye')
+    fs.writeFileSync(path.join('.jaiye', 'config.yaml'), [
+      'version: 2',
+      'agents:',
+      '  - name: codex',
+      '    description: codex',
+      'ownership:',
+      '  - pattern: "*.md"',
+      '    agent: codex',
+      'settings:',
+      '  handoff_dir: ".jaiye/handoffs"',
+      '  conflict_mode: warn',
+      '  base_branch: main'
+    ].join('\n'))
+
+    const logs: string[] = []
+    vi.spyOn(console, 'log').mockImplementation(message => logs.push(String(message)))
+    vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('exit')
+    }) as never)
+
+    expect(() => planCommand({ agent: 'codex', files: ['notes.md'], hours: 0.5 })).toThrow('exit')
+    expect(logs[0]).toContain('Invalid hours.')
+    expect(fs.existsSync(path.join('.jaiye', 'state.json'))).toBe(false)
+  })
+
   it('exits when a file is already reserved by another agent', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jaiye-plan-'))
     process.chdir(dir)

@@ -14,6 +14,11 @@ export function bridgeCommand(options: {
   limit?: number | string
 }) {
   if (options.archive) {
+    if (options.olderThan !== undefined && !/^\d+[dhm]$/.test(options.olderThan)) {
+      console.log(error('Invalid age.'))
+      process.exit(1)
+    }
+
     const result = archiveBridge(options.file, options.olderThan)
     console.log(success(`Archived ${result.archived} message${result.archived === 1 ? '' : 's'}`))
     console.log(dim(`${result.active} active message${result.active === 1 ? '' : 's'} left`))

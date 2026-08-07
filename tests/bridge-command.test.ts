@@ -66,4 +66,17 @@ describe('bridge command', () => {
     expect(() => bridgeCommand({ file, read: true, limit: '' })).toThrow('exit')
     expect(logs[0]).toContain('Invalid limit.')
   })
+
+  it('rejects invalid archive ages', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jaiye-bridge-command-'))
+    const file = path.join(dir, 'bridge.md')
+    const logs: string[] = []
+    vi.spyOn(console, 'log').mockImplementation(message => logs.push(String(message)))
+    vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('exit')
+    }) as never)
+
+    expect(() => bridgeCommand({ file, archive: true, olderThan: 'soon' })).toThrow('exit')
+    expect(logs[0]).toContain('Invalid age.')
+  })
 })

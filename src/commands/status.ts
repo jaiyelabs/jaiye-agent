@@ -5,7 +5,7 @@ import { detectMode } from '../core/mode.js'
 import { activeReservations, stateEntries } from '../core/state.js'
 import { heading, success, warn, error, dim, createTable } from '../utils/format.js'
 
-export function statusCommand(options: { all?: boolean, reserved?: boolean } = {}) {
+export function statusCommand(options: { all?: boolean, reserved?: boolean, agent?: string } = {}) {
   const config = loadConfig()
   const mode = detectMode()
   const reservations = activeReservations()
@@ -24,7 +24,7 @@ export function statusCommand(options: { all?: boolean, reserved?: boolean } = {
     return
   }
 
-  const entries = mode === 'git'
+  let entries = mode === 'git'
     ? resolveOwnership(shownFiles, config)
     : shownFiles.map(file => {
       const entry = state.find(entry => entry.file === file)
@@ -37,6 +37,20 @@ export function statusCommand(options: { all?: boolean, reserved?: boolean } = {
         conflict: assigned !== null && touched !== null && assigned !== touched
       }
     })
+
+  if (options.agent) {
+    entries = entries.filter(entry => {
+      const reservation = reservations[entry.file]
+      return entry.assigned_agent === options.agent ||
+        entry.last_touched_by === options.agent ||
+        reservation?.agent === options.agent
+    })
+  }
+
+  if (entries.length === 0) {
+    console.log(dim(options.agent ? `No files found for ${options.agent}.` : options.reserved ? 'No active reservations found.' : options.all ? 'No tracked files found.' : 'No recent file changes found.'))
+    return
+  }
 
   console.log(heading('jaiye-agent status'))
   console.log()

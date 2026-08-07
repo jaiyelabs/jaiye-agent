@@ -24,7 +24,7 @@ export function planCommand(options: { agent?: string, files?: string[], hours?:
   }
 
   const hours = options.hours ?? 4
-  if (!Number.isFinite(hours) || hours <= 0) {
+  if (!Number.isSafeInteger(hours) || hours <= 0) {
     console.log(error('Invalid hours.'))
     process.exit(1)
   }

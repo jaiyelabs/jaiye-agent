@@ -98,4 +98,27 @@ settings:
 
     expect(logs.join('\n')).toContain('notes.md')
   })
+
+  it('filters files by agent', () => {
+    setupState()
+    fs.writeFileSync('other.txt', 'hello')
+    const state = JSON.parse(fs.readFileSync(path.join('.jaiye', 'state.json'), 'utf-8'))
+    state.files['other.txt'] = {
+      assigned: null,
+      last_touched_by: 'claude',
+      last_modified: new Date().toISOString(),
+      artifact_type: 'document'
+    }
+    fs.writeFileSync(path.join('.jaiye', 'state.json'), JSON.stringify(state, null, 2))
+
+    const logs: string[] = []
+    vi.spyOn(console, 'log').mockImplementation(message => logs.push(String(message)))
+
+    statusCommand({ agent: 'codex' })
+
+    const output = logs.join('\n')
+    expect(output).toContain('notes.md')
+    expect(output).toContain('missing.md')
+    expect(output).not.toContain('other.txt')
+  })
 })

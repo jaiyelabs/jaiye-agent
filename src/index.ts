@@ -18,6 +18,10 @@ export const program = new Command()
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'))
 
 export function parsePositiveInt(value: string) {
+  if (value.trim() !== value) {
+    throw new InvalidArgumentError('must be a positive number')
+  }
+
   if (!/^\+?\d+$/.test(value)) {
     throw new InvalidArgumentError('must be a positive number')
   }
@@ -25,6 +29,23 @@ export function parsePositiveInt(value: string) {
   const parsed = Number(value)
   if (!Number.isSafeInteger(parsed) || parsed <= 0) {
     throw new InvalidArgumentError('must be a positive number')
+  }
+
+  return parsed
+}
+
+export function parsePort(value: string) {
+  if (value.trim() !== value) {
+    throw new InvalidArgumentError('must be a valid port')
+  }
+
+  if (!/^\+?\d+$/.test(value)) {
+    throw new InvalidArgumentError('must be a valid port')
+  }
+
+  const parsed = Number(value)
+  if (!Number.isSafeInteger(parsed) || parsed < 0 || parsed > 65535) {
+    throw new InvalidArgumentError('must be a valid port')
   }
 
   return parsed
@@ -48,6 +69,7 @@ program
   .description('Show file ownership and conflicts')
   .option('-a, --all', 'Show all tracked files')
   .option('-r, --reserved', 'Show only reserved files')
+  .option('--agent <agent>', 'Show files for one agent')
   .allowExcessArguments(false)
   .action(statusCommand)
 
@@ -67,7 +89,7 @@ program
   .command('log')
   .alias('history')
   .description('Show handoff history')
-  .option('--limit <n>', 'Number of entries', parsePositiveInt, 10)
+  .option('-n, --limit <n>', 'Number of entries', parsePositiveInt, 10)
   .allowExcessArguments(false)
   .action((opts) => logCommand({ limit: opts.limit }))
 
@@ -75,7 +97,7 @@ program
   .command('check')
   .alias('ci')
   .description('Check for ownership conflicts (CI mode)')
-  .option('--base <branch>', 'Base branch to compare against')
+  .option('-b, --base <branch>', 'Base branch to compare against')
   .allowExcessArguments(false)
   .action(checkCommand)
 
@@ -125,13 +147,13 @@ program
   .alias('board')
   .description('Manage a project bridge')
   .option('--between <agents>', 'Agents using the bridge')
-  .option('--file <path>', 'Bridge file path')
+  .option('-f, --file <path>', 'Bridge file path')
   .option('--append', 'Append a message')
   .option('--agent <agent>', 'Agent writing the message')
   .option('--message <text>', 'Message text')
   .option('--status <status>', 'Status marker')
   .option('--read', 'Read latest messages')
-  .option('--limit <n>', 'Number of messages', parsePositiveInt, 10)
+  .option('-n, --limit <n>', 'Number of messages', parsePositiveInt, 10)
   .option('--archive', 'Archive old DONE messages')
   .option('--older-than <age>', 'Archive age, like 7d', '7d')
   .allowExcessArguments(false)
@@ -141,9 +163,9 @@ program
   .command('watch')
   .alias('view')
   .description('Start a live local browser view')
-  .option('--port <port>', 'Port to run on', parsePositiveInt, 8787)
+  .option('-p, --port <port>', 'Port to run on', parsePort, 8787)
   .option('--host <host>', 'Host to bind', '127.0.0.1')
-  .option('--tasks-dir <path>', 'Task output directory')
+  .option('-d, --tasks-dir <path>', 'Task output directory')
   .option('--open', 'Open in the browser')
   .allowExcessArguments(false)
   .action(watchCommand)

@@ -44,7 +44,7 @@ export function readWatchSnapshot(options: WatchOptions = {}): WatchSnapshot {
 }
 
 export function startWatchServer(options: WatchOptions = {}): http.Server {
-  const port = options.port || 8787
+  const port = options.port ?? 8787
   const host = options.host || '127.0.0.1'
   const clients = new Set<http.ServerResponse>()
 
