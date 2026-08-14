@@ -39,7 +39,7 @@ export function parsePort(value: string) {
     throw new InvalidArgumentError('must be a valid port')
   }
 
-  if (!/^\+?\d+$/.test(value)) {
+  if (!/^\d+$/.test(value)) {
     throw new InvalidArgumentError('must be a valid port')
   }
 
@@ -49,6 +49,22 @@ export function parsePort(value: string) {
   }
 
   return parsed
+}
+
+export function parseHost(value: string) {
+  if (value.trim() !== value || value.length === 0) {
+    throw new InvalidArgumentError('must be a valid host')
+  }
+
+  if (/\s/.test(value)) {
+    throw new InvalidArgumentError('must be a valid host')
+  }
+
+  if (value.includes('://') || value.includes('/') || value.includes('?') || value.includes('#')) {
+    throw new InvalidArgumentError('must be a valid host')
+  }
+
+  return value
 }
 
 program
@@ -69,7 +85,7 @@ program
   .description('Show file ownership and conflicts')
   .option('-a, --all', 'Show all tracked files')
   .option('-r, --reserved', 'Show only reserved files')
-  .option('--agent <agent>', 'Show files for one agent')
+  .option('-g, --agent <agent>', 'Show files for one agent')
   .allowExcessArguments(false)
   .action(statusCommand)
 
@@ -79,7 +95,7 @@ program
   .description('Create a structured handoff between agents')
   .requiredOption('--from <agent>', 'Agent handing off')
   .requiredOption('--to <agent>', 'Agent receiving')
-  .option('--summary <text>', 'Short summary of the handoff')
+  .option('-s, --summary <text>', 'Short summary of the handoff')
   .option('--mode <mode>', 'Context mode')
   .option('--context <text>', 'Context note')
   .allowExcessArguments(false)
@@ -146,11 +162,11 @@ program
   .command('bridge')
   .alias('board')
   .description('Manage a project bridge')
-  .option('--between <agents>', 'Agents using the bridge')
+  .option('-B, --between <agents>', 'Agents using the bridge')
   .option('-f, --file <path>', 'Bridge file path')
   .option('--append', 'Append a message')
   .option('--agent <agent>', 'Agent writing the message')
-  .option('--message <text>', 'Message text')
+  .option('-m, --message <text>', 'Message text')
   .option('--status <status>', 'Status marker')
   .option('--read', 'Read latest messages')
   .option('-n, --limit <n>', 'Number of messages', parsePositiveInt, 10)
@@ -164,9 +180,9 @@ program
   .alias('view')
   .description('Start a live local browser view')
   .option('-p, --port <port>', 'Port to run on', parsePort, 8787)
-  .option('--host <host>', 'Host to bind', '127.0.0.1')
+  .option('-H, --host <host>', 'Host to bind', parseHost, '127.0.0.1')
   .option('-d, --tasks-dir <path>', 'Task output directory')
-  .option('--open', 'Open in the browser')
+  .option('-o, --open', 'Open in the browser')
   .allowExcessArguments(false)
   .action(watchCommand)
 

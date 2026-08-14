@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { parsePort, parsePositiveInt, program } from '../src/index.js'
+import { parseHost, parsePort, parsePositiveInt, program } from '../src/index.js'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -30,6 +30,34 @@ describe('cli', () => {
 
   it('accepts port zero', () => {
     expect(parsePort('0')).toBe(0)
+  })
+
+  it('rejects plus-prefixed ports', () => {
+    expect(() => parsePort('+3000')).toThrow('must be a valid port')
+  })
+
+  it('rejects empty hosts', () => {
+    expect(() => parseHost('')).toThrow('must be a valid host')
+  })
+
+  it('rejects padded hosts', () => {
+    expect(() => parseHost(' localhost')).toThrow('must be a valid host')
+  })
+
+  it('rejects hosts with spaces', () => {
+    expect(() => parseHost('local host')).toThrow('must be a valid host')
+  })
+
+  it('rejects url hosts', () => {
+    expect(() => parseHost('http://localhost')).toThrow('must be a valid host')
+  })
+
+  it('rejects host query text', () => {
+    expect(() => parseHost('localhost?debug')).toThrow('must be a valid host')
+  })
+
+  it('rejects host fragment text', () => {
+    expect(() => parseHost('localhost#debug')).toThrow('must be a valid host')
   })
 
   it('keeps reserve as a plan alias', () => {
@@ -76,6 +104,11 @@ describe('cli', () => {
     expect(command?.options.some(option => option.long === '--agent')).toBe(true)
   })
 
+  it('keeps agent as a status short option', () => {
+    const command = program.commands.find(command => command.name() === 'status')
+    expect(command?.options.some(option => option.short === '-g')).toBe(true)
+  })
+
   it('rejects stray args for option-only commands', () => {
     const cases = [
       { name: 'init', args: ['extra'] },
@@ -107,6 +140,11 @@ describe('cli', () => {
   it('keeps pass as a handoff alias', () => {
     const command = program.commands.find(command => command.name() === 'handoff')
     expect(command?.aliases()).toContain('pass')
+  })
+
+  it('keeps summary as a handoff short option', () => {
+    const command = program.commands.find(command => command.name() === 'handoff')
+    expect(command?.options.some(option => option.short === '-s')).toBe(true)
   })
 
   it('rejects stray args through command aliases', () => {
@@ -179,6 +217,16 @@ describe('cli', () => {
     expect(command?.options.some(option => option.short === '-f')).toBe(true)
   })
 
+  it('keeps between as a bridge short option', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.options.some(option => option.short === '-B')).toBe(true)
+  })
+
+  it('keeps message as a bridge short option', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.options.some(option => option.short === '-m')).toBe(true)
+  })
+
   it('keeps unreserve as a release alias', () => {
     const command = program.commands.find(command => command.name() === 'release')
     expect(command?.aliases()).toContain('unreserve')
@@ -216,9 +264,19 @@ describe('cli', () => {
     expect(command?.options.some(option => option.short === '-p')).toBe(true)
   })
 
+  it('keeps host as a watch short option', () => {
+    const command = program.commands.find(command => command.name() === 'watch')
+    expect(command?.options.some(option => option.short === '-H')).toBe(true)
+  })
+
   it('keeps tasks dir as a watch short option', () => {
     const command = program.commands.find(command => command.name() === 'watch')
     expect(command?.options.some(option => option.short === '-d')).toBe(true)
+  })
+
+  it('keeps open as a watch short option', () => {
+    const command = program.commands.find(command => command.name() === 'watch')
+    expect(command?.options.some(option => option.short === '-o')).toBe(true)
   })
 
   it('keeps board as a bridge alias', () => {
