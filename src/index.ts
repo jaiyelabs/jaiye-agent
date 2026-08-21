@@ -1,5 +1,6 @@
 import { Command, InvalidArgumentError } from 'commander'
 import { readFileSync } from 'fs'
+import { isIP } from 'net'
 import { pathToFileURL } from 'url'
 import { initCommand } from './commands/init.js'
 import { statusCommand } from './commands/status.js'
@@ -60,7 +61,11 @@ export function parseHost(value: string) {
     throw new InvalidArgumentError('must be a valid host')
   }
 
-  if (value.includes('://') || value.includes('/') || value.includes('?') || value.includes('#')) {
+  const hasUrlParts = value.includes('://') || value.includes('/') || value.includes('\\') || value.includes('?') || value.includes('#')
+  const hasBadColon = value.includes(':') && isIP(value) !== 6
+  const hasBadDots = value.includes('..') || value.startsWith('.') || value.endsWith('.')
+
+  if (hasUrlParts || hasBadColon || hasBadDots) {
     throw new InvalidArgumentError('must be a valid host')
   }
 
@@ -121,7 +126,7 @@ program
   .command('touch')
   .alias('mark')
   .description('Register that an agent touched files')
-  .requiredOption('--agent <agent>', 'Agent name')
+  .requiredOption('-g, --agent <agent>', 'Agent name')
   .argument('<files...>', 'Files touched')
   .action((files, opts) => touchCommand({ agent: opts.agent, files }))
 
@@ -136,7 +141,7 @@ program
   .command('plan')
   .alias('reserve')
   .description('Reserve files before an agent starts work')
-  .requiredOption('--agent <agent>', 'Agent name')
+  .requiredOption('-g, --agent <agent>', 'Agent name')
   .option('--hours <n>', 'Reservation length in hours', parsePositiveInt, 4)
   .argument('<files...>', 'Files to reserve')
   .action((files, opts) => planCommand({ agent: opts.agent, files, hours: opts.hours }))
@@ -146,8 +151,8 @@ program
   .alias('unreserve')
   .alias('free')
   .description('Release reserved files')
-  .requiredOption('--agent <agent>', 'Agent name')
-  .option('--all', 'Release all reservations for agent')
+  .requiredOption('-g, --agent <agent>', 'Agent name')
+  .option('-a, --all', 'Release all reservations for agent')
   .argument('[files...]', 'Files to release')
   .action((files, opts) => {
     if (opts.all && files.length > 0) {

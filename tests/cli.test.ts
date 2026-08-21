@@ -52,8 +52,28 @@ describe('cli', () => {
     expect(() => parseHost('http://localhost')).toThrow('must be a valid host')
   })
 
+  it('rejects hosts with backslashes', () => {
+    expect(() => parseHost('localhost\\debug')).toThrow('must be a valid host')
+  })
+
   it('rejects host query text', () => {
     expect(() => parseHost('localhost?debug')).toThrow('must be a valid host')
+  })
+
+  it('rejects hosts with ports', () => {
+    expect(() => parseHost('localhost:8787')).toThrow('must be a valid host')
+  })
+
+  it('rejects invalid colon hosts', () => {
+    expect(() => parseHost('local::host')).toThrow('must be a valid host')
+  })
+
+  it('rejects empty host labels', () => {
+    expect(() => parseHost('local..host')).toThrow('must be a valid host')
+  })
+
+  it('accepts ipv6 hosts', () => {
+    expect(parseHost('::1')).toBe('::1')
   })
 
   it('rejects host fragment text', () => {
@@ -63,6 +83,11 @@ describe('cli', () => {
   it('keeps reserve as a plan alias', () => {
     const command = program.commands.find(command => command.name() === 'plan')
     expect(command?.aliases()).toContain('reserve')
+  })
+
+  it('keeps agent as a plan short option', () => {
+    const command = program.commands.find(command => command.name() === 'plan')
+    expect(command?.options.some(option => option.short === '-g')).toBe(true)
   })
 
   it('rejects unsafe numbers', () => {
@@ -198,6 +223,11 @@ describe('cli', () => {
     expect(command?.aliases()).toContain('mark')
   })
 
+  it('keeps agent as a touch short option', () => {
+    const command = program.commands.find(command => command.name() === 'touch')
+    expect(command?.options.some(option => option.short === '-g')).toBe(true)
+  })
+
   it('rejects partial bridge limits', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     const option = command?.options.find(option => option.long === '--limit')
@@ -237,6 +267,16 @@ describe('cli', () => {
     expect(command?.aliases()).toContain('free')
   })
 
+  it('keeps all as a release short option', () => {
+    const command = program.commands.find(command => command.name() === 'release')
+    expect(command?.options.some(option => option.short === '-a')).toBe(true)
+  })
+
+  it('keeps agent as a release short option', () => {
+    const command = program.commands.find(command => command.name() === 'release')
+    expect(command?.options.some(option => option.short === '-g')).toBe(true)
+  })
+
   it('rejects files with release all', () => {
     const command = program.commands.find(command => command.name() === 'release')
     command?.exitOverride()
@@ -249,6 +289,23 @@ describe('cli', () => {
 
     expect(() => {
       command?.parse(['--agent', 'codex', '--all', 'notes.md'], { from: 'user' })
+    }).toThrow('exit')
+
+    expect(logs[0]).toContain('Do not pass files with --all.')
+  })
+
+  it('rejects files with release short all', () => {
+    const command = program.commands.find(command => command.name() === 'release')
+    command?.exitOverride()
+    command?.configureOutput({ writeErr: () => {}, writeOut: () => {} })
+    const logs: string[] = []
+    vi.spyOn(console, 'log').mockImplementation(message => logs.push(String(message)))
+    vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('exit')
+    }) as never)
+
+    expect(() => {
+      command?.parse(['-g', 'codex', '-a', 'notes.md'], { from: 'user' })
     }).toThrow('exit')
 
     expect(logs[0]).toContain('Do not pass files with --all.')
