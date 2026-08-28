@@ -68,12 +68,42 @@ describe('cli', () => {
     expect(() => parseHost('local::host')).toThrow('must be a valid host')
   })
 
+  it('rejects invalid ipv4 hosts', () => {
+    expect(() => parseHost('999.999.999.999')).toThrow('must be a valid host')
+  })
+
   it('rejects empty host labels', () => {
     expect(() => parseHost('local..host')).toThrow('must be a valid host')
   })
 
+  it('rejects dashed host labels', () => {
+    expect(() => parseHost('-localhost')).toThrow('must be a valid host')
+    expect(() => parseHost('local-.host')).toThrow('must be a valid host')
+  })
+
+  it('rejects long host labels', () => {
+    expect(() => parseHost(`${'a'.repeat(64)}.local`)).toThrow('must be a valid host')
+  })
+
+  it('rejects long hosts', () => {
+    expect(() => parseHost(`${'a'.repeat(63)}.${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(62)}.local`)).toThrow('must be a valid host')
+  })
+
+  it('rejects invalid host label characters', () => {
+    expect(() => parseHost('local_host')).toThrow('must be a valid host')
+    expect(() => parseHost('local!.host')).toThrow('must be a valid host')
+  })
+
+  it('accepts dashed host labels', () => {
+    expect(parseHost('local-dev.host')).toBe('local-dev.host')
+  })
+
   it('accepts ipv6 hosts', () => {
     expect(parseHost('::1')).toBe('::1')
+  })
+
+  it('accepts ipv4 hosts', () => {
+    expect(parseHost('127.0.0.1')).toBe('127.0.0.1')
   })
 
   it('rejects host fragment text', () => {
@@ -90,6 +120,11 @@ describe('cli', () => {
     expect(command?.options.some(option => option.short === '-g')).toBe(true)
   })
 
+  it('keeps hours as a plan short option', () => {
+    const command = program.commands.find(command => command.name() === 'plan')
+    expect(command?.options.some(option => option.short === '-H')).toBe(true)
+  })
+
   it('rejects unsafe numbers', () => {
     expect(() => parsePositiveInt('9007199254740992')).toThrow('must be a positive number')
   })
@@ -97,6 +132,11 @@ describe('cli', () => {
   it('uses the package version', () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8'))
     expect(program.version()).toBe(pkg.version)
+  })
+
+  it('keeps scan as an init short option', () => {
+    const command = program.commands.find(command => command.name() === 'init')
+    expect(command?.options.some(option => option.short === '-s')).toBe(true)
   })
 
   it('keeps ls as a status alias', () => {
@@ -170,6 +210,17 @@ describe('cli', () => {
   it('keeps summary as a handoff short option', () => {
     const command = program.commands.find(command => command.name() === 'handoff')
     expect(command?.options.some(option => option.short === '-s')).toBe(true)
+  })
+
+  it('keeps from and to as handoff short options', () => {
+    const command = program.commands.find(command => command.name() === 'handoff')
+    expect(command?.options.some(option => option.short === '-f')).toBe(true)
+    expect(command?.options.some(option => option.short === '-t')).toBe(true)
+  })
+
+  it('keeps context as a handoff short option', () => {
+    const command = program.commands.find(command => command.name() === 'handoff')
+    expect(command?.options.some(option => option.short === '-c')).toBe(true)
   })
 
   it('rejects stray args through command aliases', () => {
@@ -255,6 +306,11 @@ describe('cli', () => {
   it('keeps message as a bridge short option', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     expect(command?.options.some(option => option.short === '-m')).toBe(true)
+  })
+
+  it('keeps agent as a bridge short option', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.options.some(option => option.short === '-g')).toBe(true)
   })
 
   it('keeps unreserve as a release alias', () => {

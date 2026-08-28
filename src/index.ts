@@ -62,10 +62,16 @@ export function parseHost(value: string) {
   }
 
   const hasUrlParts = value.includes('://') || value.includes('/') || value.includes('\\') || value.includes('?') || value.includes('#')
-  const hasBadColon = value.includes(':') && isIP(value) !== 6
+  const ipVersion = isIP(value)
+  const hasBadColon = value.includes(':') && ipVersion !== 6
   const hasBadDots = value.includes('..') || value.startsWith('.') || value.endsWith('.')
+  const hasBadIpv4 = ipVersion === 0 && /^\d+\.\d+\.\d+\.\d+$/.test(value)
+  const hasBadChars = ipVersion === 0 && value.split('.').some(part => !/^[a-zA-Z0-9-]+$/.test(part))
+  const hasBadLabel = ipVersion === 0 && value.split('.').some(part => part.startsWith('-') || part.endsWith('-'))
+  const hasLongLabel = ipVersion === 0 && value.split('.').some(part => part.length > 63)
+  const hasLongHost = ipVersion === 0 && value.length > 253
 
-  if (hasUrlParts || hasBadColon || hasBadDots) {
+  if (hasUrlParts || hasBadColon || hasBadDots || hasBadIpv4 || hasBadChars || hasBadLabel || hasLongLabel || hasLongHost) {
     throw new InvalidArgumentError('must be a valid host')
   }
 
@@ -80,7 +86,7 @@ program
 program
   .command('init')
   .description('Initialize jaiye-agent in the current project')
-  .option('--scan', 'Infer ownership rules from the project structure')
+  .option('-s, --scan', 'Infer ownership rules from the project structure')
   .allowExcessArguments(false)
   .action(initCommand)
 
@@ -98,11 +104,11 @@ program
   .command('handoff')
   .alias('pass')
   .description('Create a structured handoff between agents')
-  .requiredOption('--from <agent>', 'Agent handing off')
-  .requiredOption('--to <agent>', 'Agent receiving')
+  .requiredOption('-f, --from <agent>', 'Agent handing off')
+  .requiredOption('-t, --to <agent>', 'Agent receiving')
   .option('-s, --summary <text>', 'Short summary of the handoff')
   .option('--mode <mode>', 'Context mode')
-  .option('--context <text>', 'Context note')
+  .option('-c, --context <text>', 'Context note')
   .allowExcessArguments(false)
   .action(handoffCommand)
 
@@ -142,7 +148,7 @@ program
   .alias('reserve')
   .description('Reserve files before an agent starts work')
   .requiredOption('-g, --agent <agent>', 'Agent name')
-  .option('--hours <n>', 'Reservation length in hours', parsePositiveInt, 4)
+  .option('-H, --hours <n>', 'Reservation length in hours', parsePositiveInt, 4)
   .argument('<files...>', 'Files to reserve')
   .action((files, opts) => planCommand({ agent: opts.agent, files, hours: opts.hours }))
 
@@ -170,7 +176,7 @@ program
   .option('-B, --between <agents>', 'Agents using the bridge')
   .option('-f, --file <path>', 'Bridge file path')
   .option('--append', 'Append a message')
-  .option('--agent <agent>', 'Agent writing the message')
+  .option('-g, --agent <agent>', 'Agent writing the message')
   .option('-m, --message <text>', 'Message text')
   .option('--status <status>', 'Status marker')
   .option('--read', 'Read latest messages')
