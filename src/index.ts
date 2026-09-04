@@ -78,6 +78,30 @@ export function parseHost(value: string) {
   return value
 }
 
+export function parseRef(value: string) {
+  if (value.trim() !== value || value.length === 0) {
+    throw new InvalidArgumentError('must be a valid ref')
+  }
+
+  const hasBadParts = value.includes('..') || value.includes('//') || value.includes('@{') || value.startsWith('/') || value.endsWith('/') || value.endsWith('.') || value === '@'
+  const hasBadPath = value.split('/').some(part => part.startsWith('.') || part.endsWith('.') || part.endsWith('.lock'))
+  const hasBadChars = /[\s~^:?*[\\]/.test(value)
+
+  if (hasBadParts || hasBadPath || hasBadChars) {
+    throw new InvalidArgumentError('must be a valid ref')
+  }
+
+  return value
+}
+
+export function parseAge(value: string) {
+  if (!/^\d+[dhm]$/.test(value)) {
+    throw new InvalidArgumentError('must be a valid age')
+  }
+
+  return value
+}
+
 program
   .name('jaiye-agent')
   .description('Multi-agent coordination protocol for AI coding tools')
@@ -107,7 +131,7 @@ program
   .requiredOption('-f, --from <agent>', 'Agent handing off')
   .requiredOption('-t, --to <agent>', 'Agent receiving')
   .option('-s, --summary <text>', 'Short summary of the handoff')
-  .option('--mode <mode>', 'Context mode')
+  .option('-M, --mode <mode>', 'Context mode')
   .option('-c, --context <text>', 'Context note')
   .allowExcessArguments(false)
   .action(handoffCommand)
@@ -124,7 +148,7 @@ program
   .command('check')
   .alias('ci')
   .description('Check for ownership conflicts (CI mode)')
-  .option('-b, --base <branch>', 'Base branch to compare against')
+  .option('-b, --base <branch>', 'Base branch to compare against', parseRef)
   .allowExcessArguments(false)
   .action(checkCommand)
 
@@ -175,14 +199,14 @@ program
   .description('Manage a project bridge')
   .option('-B, --between <agents>', 'Agents using the bridge')
   .option('-f, --file <path>', 'Bridge file path')
-  .option('--append', 'Append a message')
+  .option('-A, --append', 'Append a message')
   .option('-g, --agent <agent>', 'Agent writing the message')
   .option('-m, --message <text>', 'Message text')
   .option('--status <status>', 'Status marker')
   .option('--read', 'Read latest messages')
   .option('-n, --limit <n>', 'Number of messages', parsePositiveInt, 10)
   .option('--archive', 'Archive old DONE messages')
-  .option('--older-than <age>', 'Archive age, like 7d', '7d')
+  .option('--older-than <age>', 'Archive age, like 7d', parseAge, '7d')
   .allowExcessArguments(false)
   .action(bridgeCommand)
 

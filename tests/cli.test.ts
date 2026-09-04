@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { parseHost, parsePort, parsePositiveInt, program } from '../src/index.js'
+import { parseAge, parseHost, parsePort, parsePositiveInt, parseRef, program } from '../src/index.js'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -18,6 +18,36 @@ describe('cli', () => {
 
   it('accepts plus-prefixed positive numbers', () => {
     expect(parsePositiveInt('+2')).toBe(2)
+  })
+
+  it('rejects padded refs', () => {
+    expect(() => parseRef(' main')).toThrow('must be a valid ref')
+  })
+
+  it('rejects unsafe refs', () => {
+    expect(() => parseRef('')).toThrow('must be a valid ref')
+    expect(() => parseRef('main~1')).toThrow('must be a valid ref')
+    expect(() => parseRef('main..topic')).toThrow('must be a valid ref')
+    expect(() => parseRef('/main')).toThrow('must be a valid ref')
+    expect(() => parseRef('.main')).toThrow('must be a valid ref')
+    expect(() => parseRef('feature/main.')).toThrow('must be a valid ref')
+    expect(() => parseRef('main.lock/topic')).toThrow('must be a valid ref')
+  })
+
+  it('accepts branch refs', () => {
+    expect(parseRef('feature/check-output')).toBe('feature/check-output')
+    expect(parseRef('release/v0.2.0')).toBe('release/v0.2.0')
+  })
+
+  it('rejects invalid ages', () => {
+    expect(() => parseAge('7days')).toThrow('must be a valid age')
+    expect(() => parseAge('')).toThrow('must be a valid age')
+  })
+
+  it('accepts ages', () => {
+    expect(parseAge('7d')).toBe('7d')
+    expect(parseAge('12h')).toBe('12h')
+    expect(parseAge('30m')).toBe('30m')
   })
 
   it('rejects invalid ports', () => {
@@ -223,6 +253,11 @@ describe('cli', () => {
     expect(command?.options.some(option => option.short === '-c')).toBe(true)
   })
 
+  it('keeps mode as a handoff short option', () => {
+    const command = program.commands.find(command => command.name() === 'handoff')
+    expect(command?.options.some(option => option.short === '-M')).toBe(true)
+  })
+
   it('rejects stray args through command aliases', () => {
     const cases = [
       { name: 'ls', args: ['extra'] },
@@ -257,6 +292,12 @@ describe('cli', () => {
   it('keeps base as a check short option', () => {
     const command = program.commands.find(command => command.name() === 'check')
     expect(command?.options.some(option => option.short === '-b')).toBe(true)
+  })
+
+  it('rejects unsafe check base refs', () => {
+    const command = program.commands.find(command => command.name() === 'check')
+    const option = command?.options.find(option => option.long === '--base')
+    expect(() => option?.parseArg?.('main~1', undefined)).toThrow('must be a valid ref')
   })
 
   it('keeps history as a log alias', () => {
@@ -308,9 +349,20 @@ describe('cli', () => {
     expect(command?.options.some(option => option.short === '-m')).toBe(true)
   })
 
+  it('keeps append as a bridge short option', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.options.some(option => option.short === '-A')).toBe(true)
+  })
+
   it('keeps agent as a bridge short option', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     expect(command?.options.some(option => option.short === '-g')).toBe(true)
+  })
+
+  it('rejects unsafe bridge archive ages', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    const option = command?.options.find(option => option.long === '--older-than')
+    expect(() => option?.parseArg?.('soon', undefined)).toThrow('must be a valid age')
   })
 
   it('keeps unreserve as a release alias', () => {
