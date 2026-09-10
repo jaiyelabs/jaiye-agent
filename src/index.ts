@@ -99,6 +99,11 @@ export function parseAge(value: string) {
     throw new InvalidArgumentError('must be a valid age')
   }
 
+  const amount = Number(value.slice(0, -1))
+  if (!Number.isSafeInteger(amount) || amount <= 0) {
+    throw new InvalidArgumentError('must be a valid age')
+  }
+
   return value
 }
 
@@ -202,8 +207,8 @@ program
   .option('-A, --append', 'Append a message')
   .option('-g, --agent <agent>', 'Agent writing the message')
   .option('-m, --message <text>', 'Message text')
-  .option('--status <status>', 'Status marker')
-  .option('--read', 'Read latest messages')
+  .option('-s, --status <status>', 'Status marker')
+  .option('-R, --read', 'Read latest messages')
   .option('-n, --limit <n>', 'Number of messages', parsePositiveInt, 10)
   .option('--archive', 'Archive old DONE messages')
   .option('--older-than <age>', 'Archive age, like 7d', parseAge, '7d')

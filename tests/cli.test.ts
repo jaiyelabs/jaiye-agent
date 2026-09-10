@@ -42,6 +42,8 @@ describe('cli', () => {
   it('rejects invalid ages', () => {
     expect(() => parseAge('7days')).toThrow('must be a valid age')
     expect(() => parseAge('')).toThrow('must be a valid age')
+    expect(() => parseAge('0d')).toThrow('must be a valid age')
+    expect(() => parseAge('9007199254740992d')).toThrow('must be a valid age')
   })
 
   it('accepts ages', () => {
@@ -354,15 +356,27 @@ describe('cli', () => {
     expect(command?.options.some(option => option.short === '-A')).toBe(true)
   })
 
+  it('keeps read as a bridge short option', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.options.some(option => option.short === '-R')).toBe(true)
+  })
+
   it('keeps agent as a bridge short option', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     expect(command?.options.some(option => option.short === '-g')).toBe(true)
+  })
+
+  it('keeps status as a bridge short option', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.options.some(option => option.short === '-s')).toBe(true)
   })
 
   it('rejects unsafe bridge archive ages', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     const option = command?.options.find(option => option.long === '--older-than')
     expect(() => option?.parseArg?.('soon', undefined)).toThrow('must be a valid age')
+    expect(() => option?.parseArg?.('0d', undefined)).toThrow('must be a valid age')
+    expect(() => option?.parseArg?.('9007199254740992d', undefined)).toThrow('must be a valid age')
   })
 
   it('keeps unreserve as a release alias', () => {
