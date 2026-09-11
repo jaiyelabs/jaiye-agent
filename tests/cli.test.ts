@@ -27,9 +27,12 @@ describe('cli', () => {
   it('rejects unsafe refs', () => {
     expect(() => parseRef('')).toThrow('must be a valid ref')
     expect(() => parseRef('main~1')).toThrow('must be a valid ref')
+    expect(() => parseRef('main\x01topic')).toThrow('must be a valid ref')
     expect(() => parseRef('main..topic')).toThrow('must be a valid ref')
     expect(() => parseRef('/main')).toThrow('must be a valid ref')
     expect(() => parseRef('.main')).toThrow('must be a valid ref')
+    expect(() => parseRef('-main')).toThrow('must be a valid ref')
+    expect(() => parseRef('feature/-main')).toThrow('must be a valid ref')
     expect(() => parseRef('feature/main.')).toThrow('must be a valid ref')
     expect(() => parseRef('main.lock/topic')).toThrow('must be a valid ref')
   })
@@ -176,6 +179,11 @@ describe('cli', () => {
     expect(command?.aliases()).toContain('ls')
   })
 
+  it('keeps st as a status alias', () => {
+    const command = program.commands.find(command => command.name() === 'status')
+    expect(command?.aliases()).toContain('st')
+  })
+
   it('keeps reserved as a status option', () => {
     const command = program.commands.find(command => command.name() === 'status')
     expect(command?.options.some(option => option.long === '--reserved')).toBe(true)
@@ -263,8 +271,10 @@ describe('cli', () => {
   it('rejects stray args through command aliases', () => {
     const cases = [
       { name: 'ls', args: ['extra'] },
+      { name: 'st', args: ['extra'] },
       { name: 'history', args: ['extra'] },
       { name: 'ci', args: ['extra'] },
+      { name: 'verify', args: ['extra'] },
       { name: 'refresh', args: ['extra'] },
       { name: 'board', args: ['extra'] },
       { name: 'view', args: ['extra'] }
@@ -289,6 +299,11 @@ describe('cli', () => {
   it('keeps ci as a check alias', () => {
     const command = program.commands.find(command => command.name() === 'check')
     expect(command?.aliases()).toContain('ci')
+  })
+
+  it('keeps verify as a check alias', () => {
+    const command = program.commands.find(command => command.name() === 'check')
+    expect(command?.aliases()).toContain('verify')
   })
 
   it('keeps base as a check short option', () => {

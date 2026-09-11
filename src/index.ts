@@ -84,8 +84,8 @@ export function parseRef(value: string) {
   }
 
   const hasBadParts = value.includes('..') || value.includes('//') || value.includes('@{') || value.startsWith('/') || value.endsWith('/') || value.endsWith('.') || value === '@'
-  const hasBadPath = value.split('/').some(part => part.startsWith('.') || part.endsWith('.') || part.endsWith('.lock'))
-  const hasBadChars = /[\s~^:?*[\\]/.test(value)
+  const hasBadPath = value.split('/').some(part => part.startsWith('.') || part.startsWith('-') || part.endsWith('.') || part.endsWith('.lock'))
+  const hasBadChars = /[\x00-\x20\x7f~^:?*[\\]/.test(value)
 
   if (hasBadParts || hasBadPath || hasBadChars) {
     throw new InvalidArgumentError('must be a valid ref')
@@ -122,6 +122,7 @@ program
 program
   .command('status')
   .alias('ls')
+  .alias('st')
   .description('Show file ownership and conflicts')
   .option('-a, --all', 'Show all tracked files')
   .option('-r, --reserved', 'Show only reserved files')
@@ -152,6 +153,7 @@ program
 program
   .command('check')
   .alias('ci')
+  .alias('verify')
   .description('Check for ownership conflicts (CI mode)')
   .option('-b, --base <branch>', 'Base branch to compare against', parseRef)
   .allowExcessArguments(false)
