@@ -23,7 +23,7 @@ export function parsePositiveInt(value: string) {
     throw new InvalidArgumentError('must be a positive number')
   }
 
-  if (!/^\+?\d+$/.test(value)) {
+  if (!/^\+?[1-9]\d*$/.test(value)) {
     throw new InvalidArgumentError('must be a positive number')
   }
 
@@ -95,7 +95,7 @@ export function parseRef(value: string) {
 }
 
 export function parseAge(value: string) {
-  if (!/^\d+[dhm]$/.test(value)) {
+  if (!/^[1-9]\d*[dhm]$/.test(value)) {
     throw new InvalidArgumentError('must be a valid age')
   }
 
@@ -114,6 +114,7 @@ program
 
 program
   .command('init')
+  .alias('setup')
   .description('Initialize jaiye-agent in the current project')
   .option('-s, --scan', 'Infer ownership rules from the project structure')
   .allowExcessArguments(false)
@@ -123,6 +124,7 @@ program
   .command('status')
   .alias('ls')
   .alias('st')
+  .alias('owners')
   .description('Show file ownership and conflicts')
   .option('-a, --all', 'Show all tracked files')
   .option('-r, --reserved', 'Show only reserved files')
@@ -154,6 +156,7 @@ program
   .command('check')
   .alias('ci')
   .alias('verify')
+  .alias('audit')
   .description('Check for ownership conflicts (CI mode)')
   .option('-b, --base <branch>', 'Base branch to compare against', parseRef)
   .allowExcessArguments(false)

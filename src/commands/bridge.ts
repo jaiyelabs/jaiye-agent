@@ -14,7 +14,7 @@ export function bridgeCommand(options: {
   limit?: number | string
 }) {
   if (options.archive) {
-    if (options.olderThan !== undefined && !/^\d+[dhm]$/.test(options.olderThan)) {
+    if (options.olderThan !== undefined && !/^[1-9]\d*[dhm]$/.test(options.olderThan)) {
       console.log(error('Invalid age.'))
       process.exit(1)
     }

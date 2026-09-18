@@ -14,6 +14,8 @@ describe('cli', () => {
 
   it('rejects padded numbers', () => {
     expect(() => parsePositiveInt(' 2')).toThrow('must be a positive number')
+    expect(() => parsePositiveInt('02')).toThrow('must be a positive number')
+    expect(() => parsePositiveInt('+02')).toThrow('must be a positive number')
   })
 
   it('accepts plus-prefixed positive numbers', () => {
@@ -46,6 +48,7 @@ describe('cli', () => {
     expect(() => parseAge('7days')).toThrow('must be a valid age')
     expect(() => parseAge('')).toThrow('must be a valid age')
     expect(() => parseAge('0d')).toThrow('must be a valid age')
+    expect(() => parseAge('01d')).toThrow('must be a valid age')
     expect(() => parseAge('9007199254740992d')).toThrow('must be a valid age')
   })
 
@@ -174,6 +177,11 @@ describe('cli', () => {
     expect(command?.options.some(option => option.short === '-s')).toBe(true)
   })
 
+  it('keeps setup as an init alias', () => {
+    const command = program.commands.find(command => command.name() === 'init')
+    expect(command?.aliases()).toContain('setup')
+  })
+
   it('keeps ls as a status alias', () => {
     const command = program.commands.find(command => command.name() === 'status')
     expect(command?.aliases()).toContain('ls')
@@ -182,6 +190,11 @@ describe('cli', () => {
   it('keeps st as a status alias', () => {
     const command = program.commands.find(command => command.name() === 'status')
     expect(command?.aliases()).toContain('st')
+  })
+
+  it('keeps owners as a status alias', () => {
+    const command = program.commands.find(command => command.name() === 'status')
+    expect(command?.aliases()).toContain('owners')
   })
 
   it('keeps reserved as a status option', () => {
@@ -272,9 +285,12 @@ describe('cli', () => {
     const cases = [
       { name: 'ls', args: ['extra'] },
       { name: 'st', args: ['extra'] },
+      { name: 'owners', args: ['extra'] },
+      { name: 'setup', args: ['extra'] },
       { name: 'history', args: ['extra'] },
       { name: 'ci', args: ['extra'] },
       { name: 'verify', args: ['extra'] },
+      { name: 'audit', args: ['extra'] },
       { name: 'refresh', args: ['extra'] },
       { name: 'board', args: ['extra'] },
       { name: 'view', args: ['extra'] }
@@ -304,6 +320,11 @@ describe('cli', () => {
   it('keeps verify as a check alias', () => {
     const command = program.commands.find(command => command.name() === 'check')
     expect(command?.aliases()).toContain('verify')
+  })
+
+  it('keeps audit as a check alias', () => {
+    const command = program.commands.find(command => command.name() === 'check')
+    expect(command?.aliases()).toContain('audit')
   })
 
   it('keeps base as a check short option', () => {
