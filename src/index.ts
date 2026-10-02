@@ -40,6 +40,10 @@ export function parsePort(value: string) {
     throw new InvalidArgumentError('must be a valid port')
   }
 
+  if (value.length > 1 && value.startsWith('0')) {
+    throw new InvalidArgumentError('must be a valid port')
+  }
+
   if (!/^\d+$/.test(value)) {
     throw new InvalidArgumentError('must be a valid port')
   }
@@ -95,6 +99,10 @@ export function parseRef(value: string) {
 }
 
 export function parseAge(value: string) {
+  if (value.trim() !== value) {
+    throw new InvalidArgumentError('must be a valid age')
+  }
+
   if (!/^[1-9]\d*[dhm]$/.test(value)) {
     throw new InvalidArgumentError('must be a valid age')
   }
@@ -107,10 +115,19 @@ export function parseAge(value: string) {
   return value
 }
 
+export function parsePath(value: string) {
+  if (value.trim() !== value || value.length === 0 || /[\x00-\x1f\x7f]/.test(value)) {
+    throw new InvalidArgumentError('must be a valid path')
+  }
+
+  return value
+}
+
 program
   .name('jaiye-agent')
   .description('Multi-agent coordination protocol for AI coding tools')
   .version(pkg.version)
+  .showHelpAfterError()
 
 program
   .command('init')
@@ -147,6 +164,7 @@ program
 program
   .command('log')
   .alias('history')
+  .alias('handoffs')
   .description('Show handoff history')
   .option('-n, --limit <n>', 'Number of entries', parsePositiveInt, 10)
   .allowExcessArguments(false)
@@ -167,7 +185,7 @@ program
   .alias('mark')
   .description('Register that an agent touched files')
   .requiredOption('-g, --agent <agent>', 'Agent name')
-  .argument('<files...>', 'Files touched')
+  .argument('<files...>', 'Files touched', parsePath)
   .action((files, opts) => touchCommand({ agent: opts.agent, files }))
 
 program
@@ -183,7 +201,7 @@ program
   .description('Reserve files before an agent starts work')
   .requiredOption('-g, --agent <agent>', 'Agent name')
   .option('-H, --hours <n>', 'Reservation length in hours', parsePositiveInt, 4)
-  .argument('<files...>', 'Files to reserve')
+  .argument('<files...>', 'Files to reserve', parsePath)
   .action((files, opts) => planCommand({ agent: opts.agent, files, hours: opts.hours }))
 
 program
@@ -193,7 +211,7 @@ program
   .description('Release reserved files')
   .requiredOption('-g, --agent <agent>', 'Agent name')
   .option('-a, --all', 'Release all reservations for agent')
-  .argument('[files...]', 'Files to release')
+  .argument('[files...]', 'Files to release', parsePath)
   .action((files, opts) => {
     if (opts.all && files.length > 0) {
       console.log(error('Do not pass files with --all.'))
@@ -208,14 +226,15 @@ program
   .alias('board')
   .description('Manage a project bridge')
   .option('-B, --between <agents>', 'Agents using the bridge')
-  .option('-f, --file <path>', 'Bridge file path')
+  .option('-f, --file <path>', 'Bridge file path', parsePath)
   .option('-A, --append', 'Append a message')
   .option('-g, --agent <agent>', 'Agent writing the message')
   .option('-m, --message <text>', 'Message text')
   .option('-s, --status <status>', 'Status marker')
   .option('-R, --read', 'Read latest messages')
+  .option('--tail', 'Read latest messages')
   .option('-n, --limit <n>', 'Number of messages', parsePositiveInt, 10)
-  .option('--archive', 'Archive old DONE messages')
+  .option('-a, --archive', 'Archive old DONE messages')
   .option('--older-than <age>', 'Archive age, like 7d', parseAge, '7d')
   .allowExcessArguments(false)
   .action(bridgeCommand)
@@ -223,10 +242,11 @@ program
 program
   .command('watch')
   .alias('view')
+  .alias('serve')
   .description('Start a live local browser view')
   .option('-p, --port <port>', 'Port to run on', parsePort, 8787)
   .option('-H, --host <host>', 'Host to bind', parseHost, '127.0.0.1')
-  .option('-d, --tasks-dir <path>', 'Task output directory')
+  .option('-d, --tasks-dir <path>', 'Task output directory', parsePath)
   .option('-o, --open', 'Open in the browser')
   .allowExcessArguments(false)
   .action(watchCommand)

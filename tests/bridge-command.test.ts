@@ -92,4 +92,33 @@ describe('bridge command', () => {
     expect(() => bridgeCommand({ file, archive: true, olderThan: '01d' })).toThrow('exit')
     expect(logs[0]).toContain('Invalid age.')
   })
+
+  it('rejects unsafe archive ages', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jaiye-bridge-command-'))
+    const file = path.join(dir, 'bridge.md')
+    const logs: string[] = []
+    vi.spyOn(console, 'log').mockImplementation(message => logs.push(String(message)))
+    vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('exit')
+    }) as never)
+
+    expect(() => bridgeCommand({ file, archive: true, olderThan: '9007199254740992d' })).toThrow('exit')
+    expect(logs[0]).toContain('Invalid age.')
+  })
+
+  it('tails latest messages', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jaiye-bridge-command-'))
+    const file = path.join(dir, 'bridge.md')
+    const logs: string[] = []
+    vi.spyOn(console, 'log').mockImplementation(message => logs.push(String(message)))
+
+    bridgeCommand({ file, append: true, agent: 'codex', message: 'first' })
+    bridgeCommand({ file, append: true, agent: 'codex', message: 'second' })
+
+    logs.length = 0
+    bridgeCommand({ file, tail: true, limit: 1 })
+
+    expect(logs[0]).toContain('second')
+    expect(logs[0]).not.toContain('first')
+  })
 })

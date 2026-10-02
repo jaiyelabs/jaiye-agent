@@ -12,11 +12,15 @@ export function bridgeCommand(options: {
   archive?: boolean
   olderThan?: string
   limit?: number | string
+  tail?: boolean
 }) {
   if (options.archive) {
-    if (options.olderThan !== undefined && !/^[1-9]\d*[dhm]$/.test(options.olderThan)) {
-      console.log(error('Invalid age.'))
-      process.exit(1)
+    if (options.olderThan !== undefined) {
+      const amount = Number(options.olderThan.slice(0, -1))
+      if (!/^[1-9]\d*[dhm]$/.test(options.olderThan) || !Number.isSafeInteger(amount)) {
+        console.log(error('Invalid age.'))
+        process.exit(1)
+      }
     }
 
     const result = archiveBridge(options.file, options.olderThan)
@@ -44,7 +48,7 @@ export function bridgeCommand(options: {
     return
   }
 
-  if (options.read) {
+  if (options.read || options.tail) {
     const limit = options.limit === undefined ? 10 : Number(options.limit)
     if (!Number.isSafeInteger(limit) || limit <= 0) {
       console.log(error('Invalid limit.'))

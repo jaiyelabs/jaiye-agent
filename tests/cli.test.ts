@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { parseAge, parseHost, parsePort, parsePositiveInt, parseRef, program } from '../src/index.js'
+import { parseAge, parseHost, parsePath, parsePort, parsePositiveInt, parseRef, program } from '../src/index.js'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -47,6 +47,8 @@ describe('cli', () => {
   it('rejects invalid ages', () => {
     expect(() => parseAge('7days')).toThrow('must be a valid age')
     expect(() => parseAge('')).toThrow('must be a valid age')
+    expect(() => parseAge(' 7d')).toThrow('must be a valid age')
+    expect(() => parseAge('7d\n')).toThrow('must be a valid age')
     expect(() => parseAge('0d')).toThrow('must be a valid age')
     expect(() => parseAge('01d')).toThrow('must be a valid age')
     expect(() => parseAge('9007199254740992d')).toThrow('must be a valid age')
@@ -56,6 +58,18 @@ describe('cli', () => {
     expect(parseAge('7d')).toBe('7d')
     expect(parseAge('12h')).toBe('12h')
     expect(parseAge('30m')).toBe('30m')
+  })
+
+  it('rejects invalid paths', () => {
+    expect(() => parsePath('')).toThrow('must be a valid path')
+    expect(() => parsePath(' bridge.md')).toThrow('must be a valid path')
+    expect(() => parsePath('bridge.md\n')).toThrow('must be a valid path')
+    expect(() => parsePath('bridge\x00.md')).toThrow('must be a valid path')
+  })
+
+  it('accepts paths', () => {
+    expect(parsePath('.jaiye/bridges/bridge.md')).toBe('.jaiye/bridges/bridge.md')
+    expect(parsePath('My Project/bridge.md')).toBe('My Project/bridge.md')
   })
 
   it('rejects invalid ports', () => {
@@ -72,6 +86,10 @@ describe('cli', () => {
 
   it('rejects plus-prefixed ports', () => {
     expect(() => parsePort('+3000')).toThrow('must be a valid port')
+  })
+
+  it('rejects padded ports', () => {
+    expect(() => parsePort('080')).toThrow('must be a valid port')
   })
 
   it('rejects empty hosts', () => {
@@ -163,6 +181,12 @@ describe('cli', () => {
     expect(command?.options.some(option => option.short === '-H')).toBe(true)
   })
 
+  it('rejects empty plan files', () => {
+    const command = program.commands.find(command => command.name() === 'plan')
+    const argument = command?.registeredArguments[0]
+    expect(() => argument?.parseArg?.('', undefined)).toThrow('must be a valid path')
+  })
+
   it('rejects unsafe numbers', () => {
     expect(() => parsePositiveInt('9007199254740992')).toThrow('must be a positive number')
   })
@@ -170,6 +194,10 @@ describe('cli', () => {
   it('uses the package version', () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8'))
     expect(program.version()).toBe(pkg.version)
+  })
+
+  it('shows help after errors', () => {
+    expect(program.showHelpAfterError()).toBe(program)
   })
 
   it('keeps scan as an init short option', () => {
@@ -288,12 +316,14 @@ describe('cli', () => {
       { name: 'owners', args: ['extra'] },
       { name: 'setup', args: ['extra'] },
       { name: 'history', args: ['extra'] },
+      { name: 'handoffs', args: ['extra'] },
       { name: 'ci', args: ['extra'] },
       { name: 'verify', args: ['extra'] },
       { name: 'audit', args: ['extra'] },
       { name: 'refresh', args: ['extra'] },
       { name: 'board', args: ['extra'] },
-      { name: 'view', args: ['extra'] }
+      { name: 'view', args: ['extra'] },
+      { name: 'serve', args: ['extra'] }
     ]
 
     for (const { name, args } of cases) {
@@ -343,6 +373,11 @@ describe('cli', () => {
     expect(command?.aliases()).toContain('history')
   })
 
+  it('keeps handoffs as a log alias', () => {
+    const command = program.commands.find(command => command.name() === 'log')
+    expect(command?.aliases()).toContain('handoffs')
+  })
+
   it('keeps refresh as a sync alias', () => {
     const command = program.commands.find(command => command.name() === 'sync')
     expect(command?.aliases()).toContain('refresh')
@@ -356,6 +391,12 @@ describe('cli', () => {
   it('keeps agent as a touch short option', () => {
     const command = program.commands.find(command => command.name() === 'touch')
     expect(command?.options.some(option => option.short === '-g')).toBe(true)
+  })
+
+  it('rejects empty touch files', () => {
+    const command = program.commands.find(command => command.name() === 'touch')
+    const argument = command?.registeredArguments[0]
+    expect(() => argument?.parseArg?.('', undefined)).toThrow('must be a valid path')
   })
 
   it('rejects partial bridge limits', () => {
@@ -375,6 +416,12 @@ describe('cli', () => {
   it('keeps file as a bridge short option', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     expect(command?.options.some(option => option.short === '-f')).toBe(true)
+  })
+
+  it('rejects empty bridge files', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    const option = command?.options.find(option => option.long === '--file')
+    expect(() => option?.parseArg?.('', undefined)).toThrow('must be a valid path')
   })
 
   it('keeps between as a bridge short option', () => {
@@ -397,6 +444,11 @@ describe('cli', () => {
     expect(command?.options.some(option => option.short === '-R')).toBe(true)
   })
 
+  it('keeps tail as a bridge option', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.options.some(option => option.long === '--tail')).toBe(true)
+  })
+
   it('keeps agent as a bridge short option', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     expect(command?.options.some(option => option.short === '-g')).toBe(true)
@@ -405,6 +457,11 @@ describe('cli', () => {
   it('keeps status as a bridge short option', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     expect(command?.options.some(option => option.short === '-s')).toBe(true)
+  })
+
+  it('keeps archive as a bridge short option', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.options.some(option => option.short === '-a')).toBe(true)
   })
 
   it('rejects unsafe bridge archive ages', () => {
@@ -433,6 +490,12 @@ describe('cli', () => {
   it('keeps agent as a release short option', () => {
     const command = program.commands.find(command => command.name() === 'release')
     expect(command?.options.some(option => option.short === '-g')).toBe(true)
+  })
+
+  it('rejects empty release files', () => {
+    const command = program.commands.find(command => command.name() === 'release')
+    const argument = command?.registeredArguments[0]
+    expect(() => argument?.parseArg?.('', undefined)).toThrow('must be a valid path')
   })
 
   it('rejects files with release all', () => {
@@ -474,6 +537,11 @@ describe('cli', () => {
     expect(command?.aliases()).toContain('view')
   })
 
+  it('keeps serve as a watch alias', () => {
+    const command = program.commands.find(command => command.name() === 'watch')
+    expect(command?.aliases()).toContain('serve')
+  })
+
   it('keeps port as a watch short option', () => {
     const command = program.commands.find(command => command.name() === 'watch')
     expect(command?.options.some(option => option.short === '-p')).toBe(true)
@@ -487,6 +555,12 @@ describe('cli', () => {
   it('keeps tasks dir as a watch short option', () => {
     const command = program.commands.find(command => command.name() === 'watch')
     expect(command?.options.some(option => option.short === '-d')).toBe(true)
+  })
+
+  it('rejects empty watch task dirs', () => {
+    const command = program.commands.find(command => command.name() === 'watch')
+    const option = command?.options.find(option => option.long === '--tasks-dir')
+    expect(() => option?.parseArg?.('', undefined)).toThrow('must be a valid path')
   })
 
   it('keeps open as a watch short option', () => {
