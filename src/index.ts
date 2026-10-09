@@ -82,6 +82,39 @@ export function parseHost(value: string) {
   return value
 }
 
+export function parseAgent(value: string) {
+  if (value.trim() !== value || value.length === 0 || value.includes(',') || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
+    throw new InvalidArgumentError('must be a valid agent')
+  }
+
+  return value
+}
+
+export function parseBridgeStatus(value: string) {
+  if (value.trim() !== value || value.length === 0 || /[\x00-\x1f\x7f]/.test(value)) {
+    throw new InvalidArgumentError('must be a valid status')
+  }
+
+  return value
+}
+
+export function parseBridgeBetween(value: string) {
+  const hasEmptyAgent = value.split(',').some(agent => agent.length === 0)
+  if (value.trim() !== value || value.length === 0 || hasEmptyAgent || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
+    throw new InvalidArgumentError('must be valid agents')
+  }
+
+  return value
+}
+
+export function parseMode(value: string) {
+  if (value.trim() !== value || value.length === 0 || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
+    throw new InvalidArgumentError('must be a valid mode')
+  }
+
+  return value
+}
+
 export function parseRef(value: string) {
   if (value.trim() !== value || value.length === 0) {
     throw new InvalidArgumentError('must be a valid ref')
@@ -142,21 +175,23 @@ program
   .alias('ls')
   .alias('st')
   .alias('owners')
+  .alias('who')
   .description('Show file ownership and conflicts')
   .option('-a, --all', 'Show all tracked files')
   .option('-r, --reserved', 'Show only reserved files')
-  .option('-g, --agent <agent>', 'Show files for one agent')
+  .option('-g, --agent <agent>', 'Show files for one agent', parseAgent)
   .allowExcessArguments(false)
   .action(statusCommand)
 
 program
   .command('handoff')
   .alias('pass')
+  .alias('send')
   .description('Create a structured handoff between agents')
-  .requiredOption('-f, --from <agent>', 'Agent handing off')
-  .requiredOption('-t, --to <agent>', 'Agent receiving')
+  .requiredOption('-f, --from <agent>', 'Agent handing off', parseAgent)
+  .requiredOption('-t, --to <agent>', 'Agent receiving', parseAgent)
   .option('-s, --summary <text>', 'Short summary of the handoff')
-  .option('-M, --mode <mode>', 'Context mode')
+  .option('-M, --mode <mode>', 'Context mode', parseMode)
   .option('-c, --context <text>', 'Context note')
   .allowExcessArguments(false)
   .action(handoffCommand)
@@ -184,7 +219,7 @@ program
   .command('touch')
   .alias('mark')
   .description('Register that an agent touched files')
-  .requiredOption('-g, --agent <agent>', 'Agent name')
+  .requiredOption('-g, --agent <agent>', 'Agent name', parseAgent)
   .argument('<files...>', 'Files touched', parsePath)
   .action((files, opts) => touchCommand({ agent: opts.agent, files }))
 
@@ -198,8 +233,9 @@ program
 program
   .command('plan')
   .alias('reserve')
+  .alias('claim')
   .description('Reserve files before an agent starts work')
-  .requiredOption('-g, --agent <agent>', 'Agent name')
+  .requiredOption('-g, --agent <agent>', 'Agent name', parseAgent)
   .option('-H, --hours <n>', 'Reservation length in hours', parsePositiveInt, 4)
   .argument('<files...>', 'Files to reserve', parsePath)
   .action((files, opts) => planCommand({ agent: opts.agent, files, hours: opts.hours }))
@@ -209,7 +245,7 @@ program
   .alias('unreserve')
   .alias('free')
   .description('Release reserved files')
-  .requiredOption('-g, --agent <agent>', 'Agent name')
+  .requiredOption('-g, --agent <agent>', 'Agent name', parseAgent)
   .option('-a, --all', 'Release all reservations for agent')
   .argument('[files...]', 'Files to release', parsePath)
   .action((files, opts) => {
@@ -224,15 +260,17 @@ program
 program
   .command('bridge')
   .alias('board')
+  .alias('messages')
+  .alias('msg')
   .description('Manage a project bridge')
-  .option('-B, --between <agents>', 'Agents using the bridge')
+  .option('-B, --between <agents>', 'Agents using the bridge', parseBridgeBetween)
   .option('-f, --file <path>', 'Bridge file path', parsePath)
   .option('-A, --append', 'Append a message')
-  .option('-g, --agent <agent>', 'Agent writing the message')
+  .option('-g, --agent <agent>', 'Agent writing the message', parseAgent)
   .option('-m, --message <text>', 'Message text')
-  .option('-s, --status <status>', 'Status marker')
+  .option('-s, --status <status>', 'Status marker', parseBridgeStatus)
   .option('-R, --read', 'Read latest messages')
-  .option('--tail', 'Read latest messages')
+  .option('-T, --tail', 'Read latest messages')
   .option('-n, --limit <n>', 'Number of messages', parsePositiveInt, 10)
   .option('-a, --archive', 'Archive old DONE messages')
   .option('--older-than <age>', 'Archive age, like 7d', parseAge, '7d')
@@ -243,6 +281,7 @@ program
   .command('watch')
   .alias('view')
   .alias('serve')
+  .alias('live')
   .description('Start a live local browser view')
   .option('-p, --port <port>', 'Port to run on', parsePort, 8787)
   .option('-H, --host <host>', 'Host to bind', parseHost, '127.0.0.1')

@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { parseAge, parseHost, parsePath, parsePort, parsePositiveInt, parseRef, program } from '../src/index.js'
+import { parseAge, parseAgent, parseBridgeBetween, parseBridgeStatus, parseHost, parseMode, parsePath, parsePort, parsePositiveInt, parseRef, program } from '../src/index.js'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -166,9 +166,62 @@ describe('cli', () => {
     expect(() => parseHost('localhost#debug')).toThrow('must be a valid host')
   })
 
+  it('rejects invalid agents', () => {
+    expect(() => parseAgent('')).toThrow('must be a valid agent')
+    expect(() => parseAgent(' codex')).toThrow('must be a valid agent')
+    expect(() => parseAgent('co dex')).toThrow('must be a valid agent')
+    expect(() => parseAgent('codex,claude')).toThrow('must be a valid agent')
+    expect(() => parseAgent('codex\n')).toThrow('must be a valid agent')
+  })
+
+  it('accepts agent names', () => {
+    expect(parseAgent('codex')).toBe('codex')
+    expect(parseAgent('claude-code')).toBe('claude-code')
+  })
+
+  it('rejects invalid bridge statuses', () => {
+    expect(() => parseBridgeStatus('')).toThrow('must be a valid status')
+    expect(() => parseBridgeStatus(' done')).toThrow('must be a valid status')
+    expect(() => parseBridgeStatus('done\n')).toThrow('must be a valid status')
+  })
+
+  it('accepts bridge statuses', () => {
+    expect(parseBridgeStatus('done: first pass')).toBe('done: first pass')
+  })
+
+  it('rejects invalid bridge agents', () => {
+    expect(() => parseBridgeBetween('')).toThrow('must be valid agents')
+    expect(() => parseBridgeBetween(' cowork,codex')).toThrow('must be valid agents')
+    expect(() => parseBridgeBetween('cowork,')).toThrow('must be valid agents')
+    expect(() => parseBridgeBetween('cowork,,codex')).toThrow('must be valid agents')
+    expect(() => parseBridgeBetween('cowork, codex')).toThrow('must be valid agents')
+    expect(() => parseBridgeBetween('cowork,codex\n')).toThrow('must be valid agents')
+  })
+
+  it('accepts bridge agents', () => {
+    expect(parseBridgeBetween('cowork,codex')).toBe('cowork,codex')
+  })
+
+  it('rejects invalid modes', () => {
+    expect(() => parseMode('')).toThrow('must be a valid mode')
+    expect(() => parseMode(' git')).toThrow('must be a valid mode')
+    expect(() => parseMode('git mode')).toThrow('must be a valid mode')
+    expect(() => parseMode('git\n')).toThrow('must be a valid mode')
+  })
+
+  it('accepts modes', () => {
+    expect(parseMode('git')).toBe('git')
+    expect(parseMode('standalone')).toBe('standalone')
+  })
+
   it('keeps reserve as a plan alias', () => {
     const command = program.commands.find(command => command.name() === 'plan')
     expect(command?.aliases()).toContain('reserve')
+  })
+
+  it('keeps claim as a plan alias', () => {
+    const command = program.commands.find(command => command.name() === 'plan')
+    expect(command?.aliases()).toContain('claim')
   })
 
   it('keeps agent as a plan short option', () => {
@@ -223,6 +276,11 @@ describe('cli', () => {
   it('keeps owners as a status alias', () => {
     const command = program.commands.find(command => command.name() === 'status')
     expect(command?.aliases()).toContain('owners')
+  })
+
+  it('keeps who as a status alias', () => {
+    const command = program.commands.find(command => command.name() === 'status')
+    expect(command?.aliases()).toContain('who')
   })
 
   it('keeps reserved as a status option', () => {
@@ -288,6 +346,11 @@ describe('cli', () => {
     expect(command?.aliases()).toContain('pass')
   })
 
+  it('keeps send as a handoff alias', () => {
+    const command = program.commands.find(command => command.name() === 'handoff')
+    expect(command?.aliases()).toContain('send')
+  })
+
   it('keeps summary as a handoff short option', () => {
     const command = program.commands.find(command => command.name() === 'handoff')
     expect(command?.options.some(option => option.short === '-s')).toBe(true)
@@ -309,21 +372,38 @@ describe('cli', () => {
     expect(command?.options.some(option => option.short === '-M')).toBe(true)
   })
 
+  it('rejects padded handoff agents', () => {
+    const command = program.commands.find(command => command.name() === 'handoff')
+    const option = command?.options.find(option => option.long === '--from')
+    expect(() => option?.parseArg?.(' codex', undefined)).toThrow('must be a valid agent')
+  })
+
+  it('rejects padded handoff modes', () => {
+    const command = program.commands.find(command => command.name() === 'handoff')
+    const option = command?.options.find(option => option.long === '--mode')
+    expect(() => option?.parseArg?.(' git', undefined)).toThrow('must be a valid mode')
+  })
+
   it('rejects stray args through command aliases', () => {
     const cases = [
       { name: 'ls', args: ['extra'] },
       { name: 'st', args: ['extra'] },
       { name: 'owners', args: ['extra'] },
+      { name: 'who', args: ['extra'] },
       { name: 'setup', args: ['extra'] },
       { name: 'history', args: ['extra'] },
       { name: 'handoffs', args: ['extra'] },
+      { name: 'send', args: ['--from', 'claude', '--to', 'codex', 'extra'] },
       { name: 'ci', args: ['extra'] },
       { name: 'verify', args: ['extra'] },
       { name: 'audit', args: ['extra'] },
       { name: 'refresh', args: ['extra'] },
       { name: 'board', args: ['extra'] },
+      { name: 'messages', args: ['extra'] },
+      { name: 'msg', args: ['extra'] },
       { name: 'view', args: ['extra'] },
-      { name: 'serve', args: ['extra'] }
+      { name: 'serve', args: ['extra'] },
+      { name: 'live', args: ['extra'] }
     ]
 
     for (const { name, args } of cases) {
@@ -429,6 +509,12 @@ describe('cli', () => {
     expect(command?.options.some(option => option.short === '-B')).toBe(true)
   })
 
+  it('rejects empty bridge agents', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    const option = command?.options.find(option => option.long === '--between')
+    expect(() => option?.parseArg?.('', undefined)).toThrow('must be valid agents')
+  })
+
   it('keeps message as a bridge short option', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     expect(command?.options.some(option => option.short === '-m')).toBe(true)
@@ -449,6 +535,11 @@ describe('cli', () => {
     expect(command?.options.some(option => option.long === '--tail')).toBe(true)
   })
 
+  it('keeps tail as a bridge short option', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.options.some(option => option.short === '-T')).toBe(true)
+  })
+
   it('keeps agent as a bridge short option', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     expect(command?.options.some(option => option.short === '-g')).toBe(true)
@@ -457,6 +548,12 @@ describe('cli', () => {
   it('keeps status as a bridge short option', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     expect(command?.options.some(option => option.short === '-s')).toBe(true)
+  })
+
+  it('rejects empty bridge statuses', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    const option = command?.options.find(option => option.long === '--status')
+    expect(() => option?.parseArg?.('', undefined)).toThrow('must be a valid status')
   })
 
   it('keeps archive as a bridge short option', () => {
@@ -542,6 +639,11 @@ describe('cli', () => {
     expect(command?.aliases()).toContain('serve')
   })
 
+  it('keeps live as a watch alias', () => {
+    const command = program.commands.find(command => command.name() === 'watch')
+    expect(command?.aliases()).toContain('live')
+  })
+
   it('keeps port as a watch short option', () => {
     const command = program.commands.find(command => command.name() === 'watch')
     expect(command?.options.some(option => option.short === '-p')).toBe(true)
@@ -571,5 +673,15 @@ describe('cli', () => {
   it('keeps board as a bridge alias', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     expect(command?.aliases()).toContain('board')
+  })
+
+  it('keeps messages as a bridge alias', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.aliases()).toContain('messages')
+  })
+
+  it('keeps msg as a bridge alias', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.aliases()).toContain('msg')
   })
 })
