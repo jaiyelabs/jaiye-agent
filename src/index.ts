@@ -83,7 +83,7 @@ export function parseHost(value: string) {
 }
 
 export function parseAgent(value: string) {
-  if (value.trim() !== value || value.length === 0 || value.includes(',') || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
+  if (value.trim() !== value || value.length === 0 || value.startsWith('-') || value.includes(',') || value.includes('/') || value.includes('\\') || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
     throw new InvalidArgumentError('must be a valid agent')
   }
 
@@ -99,8 +99,13 @@ export function parseBridgeStatus(value: string) {
 }
 
 export function parseBridgeBetween(value: string) {
-  const hasEmptyAgent = value.split(',').some(agent => agent.length === 0)
-  if (value.trim() !== value || value.length === 0 || hasEmptyAgent || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
+  const agents = value.split(',')
+  const hasTooFewAgents = agents.length < 2
+  const hasEmptyAgent = agents.some(agent => agent.length === 0)
+  const hasDuplicateAgent = new Set(agents).size !== agents.length
+  const hasFlagAgent = agents.some(agent => agent.startsWith('-'))
+  const hasPathAgent = agents.some(agent => agent.includes('/') || agent.includes('\\'))
+  if (value.trim() !== value || value.length === 0 || hasTooFewAgents || hasEmptyAgent || hasDuplicateAgent || hasFlagAgent || hasPathAgent || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
     throw new InvalidArgumentError('must be valid agents')
   }
 
@@ -108,7 +113,7 @@ export function parseBridgeBetween(value: string) {
 }
 
 export function parseMode(value: string) {
-  if (value.trim() !== value || value.length === 0 || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
+  if (value.trim() !== value || value.length === 0 || value.startsWith('-') || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
     throw new InvalidArgumentError('must be a valid mode')
   }
 
@@ -210,6 +215,7 @@ program
   .alias('ci')
   .alias('verify')
   .alias('audit')
+  .alias('conflicts')
   .description('Check for ownership conflicts (CI mode)')
   .option('-b, --base <branch>', 'Base branch to compare against', parseRef)
   .allowExcessArguments(false)
@@ -243,6 +249,7 @@ program
 program
   .command('release')
   .alias('unreserve')
+  .alias('unclaim')
   .alias('free')
   .description('Release reserved files')
   .requiredOption('-g, --agent <agent>', 'Agent name', parseAgent)
@@ -262,6 +269,8 @@ program
   .alias('board')
   .alias('messages')
   .alias('msg')
+  .alias('inbox')
+  .alias('tail')
   .description('Manage a project bridge')
   .option('-B, --between <agents>', 'Agents using the bridge', parseBridgeBetween)
   .option('-f, --file <path>', 'Bridge file path', parsePath)
@@ -275,7 +284,11 @@ program
   .option('-a, --archive', 'Archive old DONE messages')
   .option('--older-than <age>', 'Archive age, like 7d', parseAge, '7d')
   .allowExcessArguments(false)
-  .action(bridgeCommand)
+  .action((opts, command) => bridgeCommand({
+    ...opts,
+    read: opts.read || command.parent?.args[0] === 'inbox',
+    tail: opts.tail || command.parent?.args[0] === 'tail'
+  }))
 
 program
   .command('watch')

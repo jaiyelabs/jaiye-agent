@@ -1,4 +1,5 @@
 import fs from 'fs'
+import os from 'os'
 import path from 'path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseAge, parseAgent, parseBridgeBetween, parseBridgeStatus, parseHost, parseMode, parsePath, parsePort, parsePositiveInt, parseRef, program } from '../src/index.js'
@@ -169,7 +170,10 @@ describe('cli', () => {
   it('rejects invalid agents', () => {
     expect(() => parseAgent('')).toThrow('must be a valid agent')
     expect(() => parseAgent(' codex')).toThrow('must be a valid agent')
+    expect(() => parseAgent('-codex')).toThrow('must be a valid agent')
     expect(() => parseAgent('co dex')).toThrow('must be a valid agent')
+    expect(() => parseAgent('co/dex')).toThrow('must be a valid agent')
+    expect(() => parseAgent('co\\dex')).toThrow('must be a valid agent')
     expect(() => parseAgent('codex,claude')).toThrow('must be a valid agent')
     expect(() => parseAgent('codex\n')).toThrow('must be a valid agent')
   })
@@ -191,9 +195,14 @@ describe('cli', () => {
 
   it('rejects invalid bridge agents', () => {
     expect(() => parseBridgeBetween('')).toThrow('must be valid agents')
+    expect(() => parseBridgeBetween('cowork')).toThrow('must be valid agents')
     expect(() => parseBridgeBetween(' cowork,codex')).toThrow('must be valid agents')
     expect(() => parseBridgeBetween('cowork,')).toThrow('must be valid agents')
     expect(() => parseBridgeBetween('cowork,,codex')).toThrow('must be valid agents')
+    expect(() => parseBridgeBetween('cowork,cowork')).toThrow('must be valid agents')
+    expect(() => parseBridgeBetween('cowork,-codex')).toThrow('must be valid agents')
+    expect(() => parseBridgeBetween('cowork,co/dex')).toThrow('must be valid agents')
+    expect(() => parseBridgeBetween('cowork,co\\dex')).toThrow('must be valid agents')
     expect(() => parseBridgeBetween('cowork, codex')).toThrow('must be valid agents')
     expect(() => parseBridgeBetween('cowork,codex\n')).toThrow('must be valid agents')
   })
@@ -205,6 +214,7 @@ describe('cli', () => {
   it('rejects invalid modes', () => {
     expect(() => parseMode('')).toThrow('must be a valid mode')
     expect(() => parseMode(' git')).toThrow('must be a valid mode')
+    expect(() => parseMode('-git')).toThrow('must be a valid mode')
     expect(() => parseMode('git mode')).toThrow('must be a valid mode')
     expect(() => parseMode('git\n')).toThrow('must be a valid mode')
   })
@@ -397,10 +407,13 @@ describe('cli', () => {
       { name: 'ci', args: ['extra'] },
       { name: 'verify', args: ['extra'] },
       { name: 'audit', args: ['extra'] },
+      { name: 'conflicts', args: ['extra'] },
       { name: 'refresh', args: ['extra'] },
       { name: 'board', args: ['extra'] },
       { name: 'messages', args: ['extra'] },
       { name: 'msg', args: ['extra'] },
+      { name: 'inbox', args: ['extra'] },
+      { name: 'tail', args: ['extra'] },
       { name: 'view', args: ['extra'] },
       { name: 'serve', args: ['extra'] },
       { name: 'live', args: ['extra'] }
@@ -435,6 +448,11 @@ describe('cli', () => {
   it('keeps audit as a check alias', () => {
     const command = program.commands.find(command => command.name() === 'check')
     expect(command?.aliases()).toContain('audit')
+  })
+
+  it('keeps conflicts as a check alias', () => {
+    const command = program.commands.find(command => command.name() === 'check')
+    expect(command?.aliases()).toContain('conflicts')
   })
 
   it('keeps base as a check short option', () => {
@@ -579,6 +597,11 @@ describe('cli', () => {
     expect(command?.aliases()).toContain('free')
   })
 
+  it('keeps unclaim as a release alias', () => {
+    const command = program.commands.find(command => command.name() === 'release')
+    expect(command?.aliases()).toContain('unclaim')
+  })
+
   it('keeps all as a release short option', () => {
     const command = program.commands.find(command => command.name() === 'release')
     expect(command?.options.some(option => option.short === '-a')).toBe(true)
@@ -683,5 +706,18 @@ describe('cli', () => {
   it('keeps msg as a bridge alias', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     expect(command?.aliases()).toContain('msg')
+  })
+
+  it('reads bridge messages through inbox and tail aliases', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jaiye-cli-'))
+    const file = path.join(dir, 'bridge.md')
+    const logs: string[] = []
+    vi.spyOn(console, 'log').mockImplementation(message => logs.push(String(message)))
+
+    program.parse(['node', 'jaiye-agent', 'inbox', '--file', file], { from: 'node' })
+    program.parse(['node', 'jaiye-agent', 'tail', '--file', file], { from: 'node' })
+
+    expect(fs.existsSync(file)).toBe(false)
+    expect(logs).toEqual(['No bridge messages found.', 'No bridge messages found.'])
   })
 })
