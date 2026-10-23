@@ -1,7 +1,7 @@
 import { Command, InvalidArgumentError } from 'commander'
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync, realpathSync } from 'fs'
 import { isIP } from 'net'
-import { pathToFileURL } from 'url'
+import { fileURLToPath } from 'url'
 import { initCommand } from './commands/init.js'
 import { statusCommand } from './commands/status.js'
 import { handoffCommand } from './commands/handoff.js'
@@ -125,8 +125,8 @@ export function parseRef(value: string) {
     throw new InvalidArgumentError('must be a valid ref')
   }
 
-  const hasBadParts = value.includes('..') || value.includes('//') || value.includes('@{') || value.startsWith('/') || value.endsWith('/') || value.endsWith('.') || value === '@'
-  const hasBadPath = value.split('/').some(part => part.startsWith('.') || part.startsWith('-') || part.endsWith('.') || part.endsWith('.lock'))
+  const hasBadParts = value.includes('..') || value.includes('//') || value.includes('@{') || value.startsWith('/') || value.endsWith('/') || value.endsWith('.')
+  const hasBadPath = value.startsWith('-') || value.split('/').some(part => part.startsWith('.') || part.endsWith('.lock'))
   const hasBadChars = /[\x00-\x20\x7f~^:?*[\\]/.test(value)
 
   if (hasBadParts || hasBadPath || hasBadChars) {
@@ -150,6 +150,12 @@ export function parseAge(value: string) {
     throw new InvalidArgumentError('must be a valid age')
   }
 
+  const unit = value.at(-1)
+  const milliseconds = unit === 'd' ? 24 * 60 * 60 * 1000 : unit === 'h' ? 60 * 60 * 1000 : 60 * 1000
+  if (Number.isNaN(new Date(Date.now() - amount * milliseconds).getTime())) {
+    throw new InvalidArgumentError('must be a valid age')
+  }
+
   return value
 }
 
@@ -165,6 +171,7 @@ program
   .name('jaiye-agent')
   .description('Multi-agent coordination protocol for AI coding tools')
   .version(pkg.version)
+  .showSuggestionAfterError()
   .showHelpAfterError()
 
 program
@@ -182,9 +189,10 @@ program
   .alias('owners')
   .alias('who')
   .description('Show file ownership and conflicts')
-  .option('-a, --all', 'Show all tracked files')
+  .option('-a, --all', 'Show all known files')
   .option('-r, --reserved', 'Show only reserved files')
   .option('-g, --agent <agent>', 'Show files for one agent', parseAgent)
+  .addHelpText('after', '\nExamples:\n  jaiye-agent status --all\n  jaiye-agent status --reserved --agent codex\n')
   .allowExcessArguments(false)
   .action(statusCommand)
 
@@ -205,10 +213,12 @@ program
   .command('log')
   .alias('history')
   .alias('handoffs')
-  .description('Show handoff history')
-  .option('-n, --limit <n>', 'Number of entries', parsePositiveInt, 10)
+  .description('Show handoff history. Use --all to show every handoff.')
+  .option('-n, --limit <n>', 'Number of entries')
+  .option('-a, --all', 'Show all handoffs (ignores --limit)')
+  .addHelpText('after', '\nExamples:\n  jaiye-agent log --all\n')
   .allowExcessArguments(false)
-  .action((opts) => logCommand({ limit: opts.limit }))
+  .action((opts) => logCommand({ limit: opts.all ? Number.MAX_SAFE_INTEGER : opts.limit === undefined ? 10 : parsePositiveInt(opts.limit) }))
 
 program
   .command('check')
@@ -242,7 +252,13 @@ program
   .alias('claim')
   .description('Reserve files before an agent starts work')
   .requiredOption('-g, --agent <agent>', 'Agent name', parseAgent)
-  .option('-H, --hours <n>', 'Reservation length in hours', parsePositiveInt, 4)
+  .option('-H, --hours <n>', 'Reservation length in hours', (value) => {
+    const hours = parsePositiveInt(value)
+    if (Number.isNaN(new Date(Date.now() + hours * 60 * 60 * 1000).getTime())) {
+      throw new InvalidArgumentError('must be a valid reservation length')
+    }
+    return hours
+  }, 4)
   .argument('<files...>', 'Files to reserve', parsePath)
   .action((files, opts) => planCommand({ agent: opts.agent, files, hours: opts.hours }))
 
@@ -281,13 +297,16 @@ program
   .option('-R, --read', 'Read latest messages')
   .option('-T, --tail', 'Read latest messages')
   .option('-n, --limit <n>', 'Number of messages', parsePositiveInt, 10)
+  .option('--all', 'Read every message')
   .option('-a, --archive', 'Archive old DONE messages')
-  .option('--older-than <age>', 'Archive age, like 7d', parseAge, '7d')
+  .option('-O, --older-than <age>', 'Archive age, like 7d', parseAge, '7d')
+  .addHelpText('after', '\nExamples:\n  jaiye-agent bridge --read --all\n')
   .allowExcessArguments(false)
   .action((opts, command) => bridgeCommand({
     ...opts,
-    read: opts.read || command.parent?.args[0] === 'inbox',
-    tail: opts.tail || command.parent?.args[0] === 'tail'
+    read: opts.read || opts.all || command.parent?.args[0] === 'inbox',
+    tail: opts.tail || command.parent?.args[0] === 'tail',
+    limit: opts.all ? Number.MAX_SAFE_INTEGER : opts.limit
   }))
 
 program
@@ -303,6 +322,6 @@ program
   .allowExcessArguments(false)
   .action(watchCommand)
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   program.parse()
 }

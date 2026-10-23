@@ -35,14 +35,16 @@ describe('cli', () => {
     expect(() => parseRef('/main')).toThrow('must be a valid ref')
     expect(() => parseRef('.main')).toThrow('must be a valid ref')
     expect(() => parseRef('-main')).toThrow('must be a valid ref')
-    expect(() => parseRef('feature/-main')).toThrow('must be a valid ref')
     expect(() => parseRef('feature/main.')).toThrow('must be a valid ref')
     expect(() => parseRef('main.lock/topic')).toThrow('must be a valid ref')
   })
 
   it('accepts branch refs', () => {
+    expect(parseRef('@')).toBe('@')
     expect(parseRef('feature/check-output')).toBe('feature/check-output')
     expect(parseRef('release/v0.2.0')).toBe('release/v0.2.0')
+    expect(parseRef('feature/-main')).toBe('feature/-main')
+    expect(parseRef('feature/main./next')).toBe('feature/main./next')
   })
 
   it('rejects invalid ages', () => {
@@ -53,6 +55,10 @@ describe('cli', () => {
     expect(() => parseAge('0d')).toThrow('must be a valid age')
     expect(() => parseAge('01d')).toThrow('must be a valid age')
     expect(() => parseAge('9007199254740992d')).toThrow('must be a valid age')
+  })
+
+  it('rejects ages that produce an invalid date', () => {
+    expect(() => parseAge('9007199254740991d')).toThrow('must be a valid age')
   })
 
   it('accepts ages', () => {
