@@ -2,9 +2,23 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { describe, expect, it, vi } from 'vitest'
-import { program } from '../src/index.js'
+import { parseAgent, program } from '../src/index.js'
 
 describe('command options', () => {
+  it('rejects agent names that cannot be used in handoff filenames', () => {
+    expect(() => parseAgent('claude:code')).toThrow('must be a valid agent')
+    expect(() => parseAgent('codex|cli')).toThrow('must be a valid agent')
+  })
+
+  it('shows a handoff example in command help', () => {
+    const command = program.commands.find(command => command.name() === 'handoff')
+    let output = ''
+    command?.configureOutput({ writeOut: text => { output += text } })
+
+    command?.outputHelp()
+    expect(output).toContain('jaiye-agent handoff --from claude --to codex')
+  })
+
   it('rejects reservation hours that produce an invalid date', () => {
     const command = program.commands.find(command => command.name() === 'plan')
     const option = command?.options.find(option => option.long === '--hours')

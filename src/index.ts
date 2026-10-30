@@ -83,7 +83,7 @@ export function parseHost(value: string) {
 }
 
 export function parseAgent(value: string) {
-  if (value.trim() !== value || value.length === 0 || value.startsWith('-') || value.includes(',') || value.includes('/') || value.includes('\\') || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
+  if (value.trim() !== value || value.length === 0 || value.startsWith('-') || value.includes(',') || value.includes('/') || value.includes('\\') || /[<>:"|?*]/.test(value) || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
     throw new InvalidArgumentError('must be a valid agent')
   }
 
@@ -91,7 +91,7 @@ export function parseAgent(value: string) {
 }
 
 export function parseBridgeStatus(value: string) {
-  if (value.trim() !== value || value.length === 0 || /[\x00-\x1f\x7f]/.test(value)) {
+  if (value.trim() !== value || value.length === 0 || /[\x00-\x1f\x7f]/.test(value) || /^### /m.test(value)) {
     throw new InvalidArgumentError('must be a valid status')
   }
 
@@ -105,7 +105,8 @@ export function parseBridgeBetween(value: string) {
   const hasDuplicateAgent = new Set(agents).size !== agents.length
   const hasFlagAgent = agents.some(agent => agent.startsWith('-'))
   const hasPathAgent = agents.some(agent => agent.includes('/') || agent.includes('\\'))
-  if (value.trim() !== value || value.length === 0 || hasTooFewAgents || hasEmptyAgent || hasDuplicateAgent || hasFlagAgent || hasPathAgent || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
+  const hasInvalidAgent = agents.some(agent => /[<>:"|?*]/.test(agent))
+  if (value.trim() !== value || value.length === 0 || hasTooFewAgents || hasEmptyAgent || hasDuplicateAgent || hasFlagAgent || hasPathAgent || hasInvalidAgent || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
     throw new InvalidArgumentError('must be valid agents')
   }
 
@@ -115,6 +116,22 @@ export function parseBridgeBetween(value: string) {
 export function parseMode(value: string) {
   if (value.trim() !== value || value.length === 0 || value.startsWith('-') || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
     throw new InvalidArgumentError('must be a valid mode')
+  }
+
+  return value
+}
+
+export function parseSummary(value: string) {
+  if (value.trim() !== value || value.length === 0 || value.startsWith('#') || /[\x00-\x1f\x7f]/.test(value)) {
+    throw new InvalidArgumentError('must be a valid summary')
+  }
+
+  return value
+}
+
+export function parseBridgeMessage(value: string) {
+  if (value.length === 0 || /[\x00-\x08\x0b-\x1f\x7f]/.test(value) || /^### /m.test(value)) {
+    throw new InvalidArgumentError('must be a valid message')
   }
 
   return value
@@ -188,6 +205,7 @@ program
   .alias('st')
   .alias('owners')
   .alias('who')
+  .alias('list')
   .description('Show file ownership and conflicts')
   .option('-a, --all', 'Show all known files')
   .option('-r, --reserved', 'Show only reserved files')
@@ -200,12 +218,14 @@ program
   .command('handoff')
   .alias('pass')
   .alias('send')
+  .alias('handover')
   .description('Create a structured handoff between agents')
   .requiredOption('-f, --from <agent>', 'Agent handing off', parseAgent)
   .requiredOption('-t, --to <agent>', 'Agent receiving', parseAgent)
-  .option('-s, --summary <text>', 'Short summary of the handoff')
+  .option('-s, --summary <text>', 'Short summary of the handoff', parseSummary)
   .option('-M, --mode <mode>', 'Context mode', parseMode)
   .option('-c, --context <text>', 'Context note')
+  .addHelpText('after', '\nExamples:\n  jaiye-agent handoff --from claude --to codex --summary "tests are ready"\n')
   .allowExcessArguments(false)
   .action(handoffCommand)
 
@@ -213,12 +233,13 @@ program
   .command('log')
   .alias('history')
   .alias('handoffs')
+  .alias('recent')
   .description('Show handoff history. Use --all to show every handoff.')
-  .option('-n, --limit <n>', 'Number of entries')
+  .option('-n, --limit <n>', 'Number of entries', (value) => value === '0' ? 0 : parsePositiveInt(value))
   .option('-a, --all', 'Show all handoffs (ignores --limit)')
   .addHelpText('after', '\nExamples:\n  jaiye-agent log --all\n')
   .allowExcessArguments(false)
-  .action((opts) => logCommand({ limit: opts.all ? Number.MAX_SAFE_INTEGER : opts.limit === undefined ? 10 : parsePositiveInt(opts.limit) }))
+  .action((opts) => logCommand({ limit: opts.all ? Number.MAX_SAFE_INTEGER : opts.limit }))
 
 program
   .command('check')
@@ -228,6 +249,7 @@ program
   .alias('conflicts')
   .description('Check for ownership conflicts (CI mode)')
   .option('-b, --base <branch>', 'Base branch to compare against', parseRef)
+  .addHelpText('after', '\nExamples:\n  jaiye-agent check --base main\n')
   .allowExcessArguments(false)
   .action(checkCommand)
 
@@ -287,12 +309,13 @@ program
   .alias('msg')
   .alias('inbox')
   .alias('tail')
+  .alias('latest')
   .description('Manage a project bridge')
   .option('-B, --between <agents>', 'Agents using the bridge', parseBridgeBetween)
   .option('-f, --file <path>', 'Bridge file path', parsePath)
   .option('-A, --append', 'Append a message')
   .option('-g, --agent <agent>', 'Agent writing the message', parseAgent)
-  .option('-m, --message <text>', 'Message text')
+  .option('-m, --message <text>', 'Message text', parseBridgeMessage)
   .option('-s, --status <status>', 'Status marker', parseBridgeStatus)
   .option('-R, --read', 'Read latest messages')
   .option('-T, --tail', 'Read latest messages')
@@ -300,12 +323,12 @@ program
   .option('--all', 'Read every message')
   .option('-a, --archive', 'Archive old DONE messages')
   .option('-O, --older-than <age>', 'Archive age, like 7d', parseAge, '7d')
-  .addHelpText('after', '\nExamples:\n  jaiye-agent bridge --read --all\n')
+  .addHelpText('after', '\nExamples:\n  jaiye-agent bridge --read --all\n  jaiye-agent bridge --append --agent codex --message "review ready"\n')
   .allowExcessArguments(false)
   .action((opts, command) => bridgeCommand({
     ...opts,
     read: opts.read || opts.all || command.parent?.args[0] === 'inbox',
-    tail: opts.tail || command.parent?.args[0] === 'tail',
+    tail: opts.tail || ['tail', 'latest'].includes(command.parent?.args[0]),
     limit: opts.all ? Number.MAX_SAFE_INTEGER : opts.limit
   }))
 

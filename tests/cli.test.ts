@@ -2,7 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { parseAge, parseAgent, parseBridgeBetween, parseBridgeStatus, parseHost, parseMode, parsePath, parsePort, parsePositiveInt, parseRef, program } from '../src/index.js'
+import { parseAge, parseAgent, parseBridgeBetween, parseBridgeMessage, parseBridgeStatus, parseHost, parseMode, parsePath, parsePort, parsePositiveInt, parseRef, parseSummary, program } from '../src/index.js'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -209,6 +209,8 @@ describe('cli', () => {
     expect(() => parseBridgeBetween('cowork,-codex')).toThrow('must be valid agents')
     expect(() => parseBridgeBetween('cowork,co/dex')).toThrow('must be valid agents')
     expect(() => parseBridgeBetween('cowork,co\\dex')).toThrow('must be valid agents')
+    expect(() => parseBridgeBetween('cowork,co:dex')).toThrow('must be valid agents')
+    expect(() => parseBridgeBetween('cowork,co|dex')).toThrow('must be valid agents')
     expect(() => parseBridgeBetween('cowork, codex')).toThrow('must be valid agents')
     expect(() => parseBridgeBetween('cowork,codex\n')).toThrow('must be valid agents')
   })
@@ -228,6 +230,26 @@ describe('cli', () => {
   it('accepts modes', () => {
     expect(parseMode('git')).toBe('git')
     expect(parseMode('standalone')).toBe('standalone')
+  })
+
+  it('rejects invalid handoff summaries', () => {
+    expect(() => parseSummary('')).toThrow('must be a valid summary')
+    expect(() => parseSummary(' handoff')).toThrow('must be a valid summary')
+    expect(() => parseSummary('## Notes')).toThrow('must be a valid summary')
+    expect(() => parseSummary('handoff\n## Notes')).toThrow('must be a valid summary')
+  })
+
+  it('accepts handoff summaries', () => {
+    expect(parseSummary('handoff ready')).toBe('handoff ready')
+  })
+
+  it('rejects bridge message headers', () => {
+    expect(() => parseBridgeMessage('### CODEX - 2026-10-28')).toThrow('must be a valid message')
+    expect(() => parseBridgeMessage('first note\n### CODEX - 2026-10-28')).toThrow('must be a valid message')
+  })
+
+  it('accepts multiline bridge messages', () => {
+    expect(parseBridgeMessage('first note\nsecond note')).toBe('first note\nsecond note')
   })
 
   it('keeps reserve as a plan alias', () => {
@@ -299,6 +321,11 @@ describe('cli', () => {
     expect(command?.aliases()).toContain('who')
   })
 
+  it('keeps list as a status alias', () => {
+    const command = program.commands.find(command => command.name() === 'status')
+    expect(command?.aliases()).toContain('list')
+  })
+
   it('keeps reserved as a status option', () => {
     const command = program.commands.find(command => command.name() === 'status')
     expect(command?.options.some(option => option.long === '--reserved')).toBe(true)
@@ -367,6 +394,11 @@ describe('cli', () => {
     expect(command?.aliases()).toContain('send')
   })
 
+  it('keeps handover as a handoff alias', () => {
+    const command = program.commands.find(command => command.name() === 'handoff')
+    expect(command?.aliases()).toContain('handover')
+  })
+
   it('keeps summary as a handoff short option', () => {
     const command = program.commands.find(command => command.name() === 'handoff')
     expect(command?.options.some(option => option.short === '-s')).toBe(true)
@@ -406,10 +438,13 @@ describe('cli', () => {
       { name: 'st', args: ['extra'] },
       { name: 'owners', args: ['extra'] },
       { name: 'who', args: ['extra'] },
+      { name: 'list', args: ['extra'] },
       { name: 'setup', args: ['extra'] },
       { name: 'history', args: ['extra'] },
       { name: 'handoffs', args: ['extra'] },
+      { name: 'recent', args: ['extra'] },
       { name: 'send', args: ['--from', 'claude', '--to', 'codex', 'extra'] },
+      { name: 'handover', args: ['--from', 'claude', '--to', 'codex', 'extra'] },
       { name: 'ci', args: ['extra'] },
       { name: 'verify', args: ['extra'] },
       { name: 'audit', args: ['extra'] },
@@ -420,6 +455,7 @@ describe('cli', () => {
       { name: 'msg', args: ['extra'] },
       { name: 'inbox', args: ['extra'] },
       { name: 'tail', args: ['extra'] },
+      { name: 'latest', args: ['extra'] },
       { name: 'view', args: ['extra'] },
       { name: 'serve', args: ['extra'] },
       { name: 'live', args: ['extra'] }
@@ -480,6 +516,17 @@ describe('cli', () => {
   it('keeps handoffs as a log alias', () => {
     const command = program.commands.find(command => command.name() === 'log')
     expect(command?.aliases()).toContain('handoffs')
+  })
+
+  it('keeps recent as a log alias', () => {
+    const command = program.commands.find(command => command.name() === 'log')
+    expect(command?.aliases()).toContain('recent')
+  })
+
+  it('rejects invalid log limits', () => {
+    const command = program.commands.find(command => command.name() === 'log')
+    const option = command?.options.find(option => option.long === '--limit')
+    expect(() => option?.parseArg?.('2x', undefined)).toThrow('must be a positive number')
   })
 
   it('keeps refresh as a sync alias', () => {
@@ -714,7 +761,21 @@ describe('cli', () => {
     expect(command?.aliases()).toContain('msg')
   })
 
-  it('reads bridge messages through inbox and tail aliases', () => {
+  it('keeps latest as a bridge alias', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.aliases()).toContain('latest')
+  })
+
+  it('shows a bridge append example in command help', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    let output = ''
+    command?.configureOutput({ writeOut: text => { output += text } })
+
+    command?.outputHelp()
+    expect(output).toContain('jaiye-agent bridge --append --agent codex')
+  })
+
+  it('reads bridge messages through inbox, tail and latest aliases', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jaiye-cli-'))
     const file = path.join(dir, 'bridge.md')
     const logs: string[] = []
@@ -722,8 +783,9 @@ describe('cli', () => {
 
     program.parse(['node', 'jaiye-agent', 'inbox', '--file', file], { from: 'node' })
     program.parse(['node', 'jaiye-agent', 'tail', '--file', file], { from: 'node' })
+    program.parse(['node', 'jaiye-agent', 'latest', '--file', file], { from: 'node' })
 
     expect(fs.existsSync(file)).toBe(false)
-    expect(logs).toEqual(['No bridge messages found.', 'No bridge messages found.'])
+    expect(logs).toEqual(['No bridge messages found.', 'No bridge messages found.', 'No bridge messages found.'])
   })
 })
