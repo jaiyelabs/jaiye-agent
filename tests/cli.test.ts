@@ -193,6 +193,7 @@ describe('cli', () => {
     expect(() => parseBridgeStatus('')).toThrow('must be a valid status')
     expect(() => parseBridgeStatus(' done')).toThrow('must be a valid status')
     expect(() => parseBridgeStatus('done\n')).toThrow('must be a valid status')
+    expect(() => parseBridgeStatus('done\n  ### CODEX - 2026-10-28')).toThrow('must be a valid status')
   })
 
   it('accepts bridge statuses', () => {
@@ -244,7 +245,9 @@ describe('cli', () => {
   })
 
   it('rejects bridge message headers', () => {
+    expect(() => parseBridgeMessage('   ')).toThrow('must be a valid message')
     expect(() => parseBridgeMessage('### CODEX - 2026-10-28')).toThrow('must be a valid message')
+    expect(() => parseBridgeMessage('  ### CODEX - 2026-10-28')).toThrow('must be a valid message')
     expect(() => parseBridgeMessage('first note\n### CODEX - 2026-10-28')).toThrow('must be a valid message')
   })
 
@@ -601,9 +604,19 @@ describe('cli', () => {
     expect(command?.options.some(option => option.short === '-R')).toBe(true)
   })
 
+  it('keeps all as a bridge short option', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.options.some(option => option.short === '-l')).toBe(true)
+  })
+
   it('keeps tail as a bridge option', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     expect(command?.options.some(option => option.long === '--tail')).toBe(true)
+  })
+
+  it('keeps read as a bridge alias', () => {
+    const command = program.commands.find(command => command.name() === 'bridge')
+    expect(command?.aliases()).toContain('read')
   })
 
   it('keeps tail as a bridge short option', () => {
@@ -775,17 +788,22 @@ describe('cli', () => {
     expect(output).toContain('jaiye-agent bridge --append --agent codex')
   })
 
-  it('reads bridge messages through inbox, tail and latest aliases', () => {
+  it('reads bridge messages through reading aliases and short all', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jaiye-cli-'))
     const file = path.join(dir, 'bridge.md')
     const logs: string[] = []
     vi.spyOn(console, 'log').mockImplementation(message => logs.push(String(message)))
 
+    program.parse(['node', 'jaiye-agent', 'board', '--file', file], { from: 'node' })
+    program.parse(['node', 'jaiye-agent', 'messages', '--file', file], { from: 'node' })
+    program.parse(['node', 'jaiye-agent', 'msg', '--file', file], { from: 'node' })
     program.parse(['node', 'jaiye-agent', 'inbox', '--file', file], { from: 'node' })
+    program.parse(['node', 'jaiye-agent', 'read', '--file', file], { from: 'node' })
     program.parse(['node', 'jaiye-agent', 'tail', '--file', file], { from: 'node' })
     program.parse(['node', 'jaiye-agent', 'latest', '--file', file], { from: 'node' })
+    program.parse(['node', 'jaiye-agent', 'bridge', '-l', '--file', file], { from: 'node' })
 
     expect(fs.existsSync(file)).toBe(false)
-    expect(logs).toEqual(['No bridge messages found.', 'No bridge messages found.', 'No bridge messages found.'])
+    expect(logs).toEqual(['No bridge messages found.', 'No bridge messages found.', 'No bridge messages found.', 'No bridge messages found.', 'No bridge messages found.', 'No bridge messages found.', 'No bridge messages found.', 'No bridge messages found.'])
   })
 })

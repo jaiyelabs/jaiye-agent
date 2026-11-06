@@ -91,7 +91,7 @@ export function parseAgent(value: string) {
 }
 
 export function parseBridgeStatus(value: string) {
-  if (value.trim() !== value || value.length === 0 || /[\x00-\x1f\x7f]/.test(value) || /^### /m.test(value)) {
+  if (value.trim() !== value || value.length === 0 || /[\x00-\x1f\x7f]/.test(value) || /^(?: {0,3})### /m.test(value)) {
     throw new InvalidArgumentError('must be a valid status')
   }
 
@@ -130,7 +130,7 @@ export function parseSummary(value: string) {
 }
 
 export function parseBridgeMessage(value: string) {
-  if (value.length === 0 || /[\x00-\x08\x0b-\x1f\x7f]/.test(value) || /^### /m.test(value)) {
+  if (value.trim().length === 0 || /[\x00-\x08\x0b-\x1f\x7f]/.test(value) || /^(?: {0,3})### /m.test(value)) {
     throw new InvalidArgumentError('must be a valid message')
   }
 
@@ -308,6 +308,7 @@ program
   .alias('messages')
   .alias('msg')
   .alias('inbox')
+  .alias('read')
   .alias('tail')
   .alias('latest')
   .description('Manage a project bridge')
@@ -320,14 +321,14 @@ program
   .option('-R, --read', 'Read latest messages')
   .option('-T, --tail', 'Read latest messages')
   .option('-n, --limit <n>', 'Number of messages', parsePositiveInt, 10)
-  .option('--all', 'Read every message')
+  .option('-l, --all', 'Read every message')
   .option('-a, --archive', 'Archive old DONE messages')
   .option('-O, --older-than <age>', 'Archive age, like 7d', parseAge, '7d')
   .addHelpText('after', '\nExamples:\n  jaiye-agent bridge --read --all\n  jaiye-agent bridge --append --agent codex --message "review ready"\n')
   .allowExcessArguments(false)
   .action((opts, command) => bridgeCommand({
     ...opts,
-    read: opts.read || opts.all || command.parent?.args[0] === 'inbox',
+    read: opts.read || opts.all || ['board', 'messages', 'msg', 'inbox', 'read'].includes(command.parent?.args[0]),
     tail: opts.tail || ['tail', 'latest'].includes(command.parent?.args[0]),
     limit: opts.all ? Number.MAX_SAFE_INTEGER : opts.limit
   }))
