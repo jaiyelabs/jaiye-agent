@@ -176,6 +176,8 @@ describe('cli', () => {
   it('rejects invalid agents', () => {
     expect(() => parseAgent('')).toThrow('must be a valid agent')
     expect(() => parseAgent(' codex')).toThrow('must be a valid agent')
+    expect(() => parseAgent('.')).toThrow('must be a valid agent')
+    expect(() => parseAgent('..')).toThrow('must be a valid agent')
     expect(() => parseAgent('-codex')).toThrow('must be a valid agent')
     expect(() => parseAgent('co dex')).toThrow('must be a valid agent')
     expect(() => parseAgent('co/dex')).toThrow('must be a valid agent')
@@ -208,6 +210,8 @@ describe('cli', () => {
     expect(() => parseBridgeBetween('cowork,,codex')).toThrow('must be valid agents')
     expect(() => parseBridgeBetween('cowork,cowork')).toThrow('must be valid agents')
     expect(() => parseBridgeBetween('cowork,-codex')).toThrow('must be valid agents')
+    expect(() => parseBridgeBetween('cowork,.')).toThrow('must be valid agents')
+    expect(() => parseBridgeBetween('cowork,..')).toThrow('must be valid agents')
     expect(() => parseBridgeBetween('cowork,co/dex')).toThrow('must be valid agents')
     expect(() => parseBridgeBetween('cowork,co\\dex')).toThrow('must be valid agents')
     expect(() => parseBridgeBetween('cowork,co:dex')).toThrow('must be valid agents')
@@ -329,6 +333,11 @@ describe('cli', () => {
     expect(command?.aliases()).toContain('list')
   })
 
+  it('keeps files as a status alias', () => {
+    const command = program.commands.find(command => command.name() === 'status')
+    expect(command?.aliases()).toContain('files')
+  })
+
   it('keeps reserved as a status option', () => {
     const command = program.commands.find(command => command.name() === 'status')
     expect(command?.options.some(option => option.long === '--reserved')).toBe(true)
@@ -357,6 +366,13 @@ describe('cli', () => {
   it('keeps agent as a status short option', () => {
     const command = program.commands.find(command => command.name() === 'status')
     expect(command?.options.some(option => option.short === '-g')).toBe(true)
+  })
+
+  it('keeps owner as a status option', () => {
+    const command = program.commands.find(command => command.name() === 'status')
+    const option = command?.options.find(option => option.long === '--owner')
+    expect(option).toBeDefined()
+    expect(() => option?.parseArg?.(' codex', undefined)).toThrow('must be a valid agent')
   })
 
   it('rejects stray args for option-only commands', () => {
@@ -566,7 +582,6 @@ describe('cli', () => {
     expect(log?.options.some(option => option.short === '-n')).toBe(true)
     expect(bridge?.options.some(option => option.short === '-n')).toBe(true)
   })
-
   it('keeps file as a bridge short option', () => {
     const command = program.commands.find(command => command.name() === 'bridge')
     expect(command?.options.some(option => option.short === '-f')).toBe(true)

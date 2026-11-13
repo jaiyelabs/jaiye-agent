@@ -83,7 +83,7 @@ export function parseHost(value: string) {
 }
 
 export function parseAgent(value: string) {
-  if (value.trim() !== value || value.length === 0 || value.startsWith('-') || value.includes(',') || value.includes('/') || value.includes('\\') || /[<>:"|?*]/.test(value) || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
+  if (value.trim() !== value || value.length === 0 || value === '.' || value === '..' || value.startsWith('-') || value.includes(',') || value.includes('/') || value.includes('\\') || /[<>:"|?*]/.test(value) || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
     throw new InvalidArgumentError('must be a valid agent')
   }
 
@@ -104,9 +104,10 @@ export function parseBridgeBetween(value: string) {
   const hasEmptyAgent = agents.some(agent => agent.length === 0)
   const hasDuplicateAgent = new Set(agents).size !== agents.length
   const hasFlagAgent = agents.some(agent => agent.startsWith('-'))
+  const hasDotAgent = agents.some(agent => agent === '.' || agent === '..')
   const hasPathAgent = agents.some(agent => agent.includes('/') || agent.includes('\\'))
   const hasInvalidAgent = agents.some(agent => /[<>:"|?*]/.test(agent))
-  if (value.trim() !== value || value.length === 0 || hasTooFewAgents || hasEmptyAgent || hasDuplicateAgent || hasFlagAgent || hasPathAgent || hasInvalidAgent || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
+  if (value.trim() !== value || value.length === 0 || hasTooFewAgents || hasEmptyAgent || hasDuplicateAgent || hasFlagAgent || hasDotAgent || hasPathAgent || hasInvalidAgent || /\s/.test(value) || /[\x00-\x1f\x7f]/.test(value)) {
     throw new InvalidArgumentError('must be valid agents')
   }
 
@@ -206,13 +207,15 @@ program
   .alias('owners')
   .alias('who')
   .alias('list')
+  .alias('files')
   .description('Show file ownership and conflicts')
   .option('-a, --all', 'Show all known files')
   .option('-r, --reserved', 'Show only reserved files')
   .option('-g, --agent <agent>', 'Show files for one agent', parseAgent)
+  .option('--owner <agent>', 'Show files for one owner', parseAgent)
   .addHelpText('after', '\nExamples:\n  jaiye-agent status --all\n  jaiye-agent status --reserved --agent codex\n')
   .allowExcessArguments(false)
-  .action(statusCommand)
+  .action((opts) => statusCommand({ ...opts, agent: opts.agent || opts.owner }))
 
 program
   .command('handoff')
